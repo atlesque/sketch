@@ -16,7 +16,7 @@ const knows = computed(() => {
   return room.drawerId === props.me || !!room.players.find((p) => p.id === props.me)?.guessed;
 });
 const placeholder = computed(() => {
-  if (props.room?.phase === 'drawing') return knows.value ? 'Chat met wie het al weet…' : 'Raad het woord…';
+  if (props.room?.phase === 'drawing') return knows.value ? 'Chat met wie het al weet…' : 'Typ je gok hier…';
   return 'Typ een bericht…';
 });
 
@@ -72,7 +72,7 @@ defineExpose({ focus: () => input.value?.inputRef?.focus() });
     </ul>
     <form v-if="!spectator" class="border-t border-default p-2" @submit.prevent="submit">
       <UInput ref="input" v-model="text" :placeholder="placeholder" :maxlength="LIMITS.chat" :disabled="disabled" autocomplete="off" class="w-full" :ui="{ base: knows ? 'ring-success/60' : '' }" aria-label="Bericht of gok">
-        <template #trailing>
+        <template v-if="text.length > LIMITS.chat - 20" #trailing>
           <span class="text-xs text-dimmed tabular-nums">{{ text.length }}/{{ LIMITS.chat }}</span>
         </template>
       </UInput>

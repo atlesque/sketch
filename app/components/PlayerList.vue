@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// Players in score order, with who draws, who guessed, the host, signed-in badges and reactions.
+// Players in score order, one row each: rank, name and points, avatar (with a pencil on the drawer). Rows of players
+// who guessed are green; the host has a crown, signed-in players a badge.
 // Clicking someone else opens what you can do to them: vote to kick, report, and for the host kick or hand over.
 import type { DropdownMenuItem } from '@nuxt/ui';
 import { rank } from '#shared/game';
@@ -30,37 +31,34 @@ function actions(p: PlayerView): DropdownMenuItem[][] {
 </script>
 
 <template>
-  <ol class="flex flex-col gap-1" aria-label="Spelers">
-    <li v-for="p in ranked" :key="p.id">
+  <ol class="overflow-hidden rounded-lg border border-default bg-default" aria-label="Spelers">
+    <li v-for="(p, index) in ranked" :key="p.id">
       <UDropdownMenu :items="actions(p)" :disabled="p.id === me" :content="{ align: 'start', side: 'right' }">
         <button
           type="button"
-          class="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left transition-colors"
+          class="flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors"
           :class="[
-            p.guessed ? 'border-success/40 bg-success/10' : 'border-default bg-default',
-            p.id === me ? 'ring-1 ring-primary/40' : '',
+            p.guessed ? 'bg-success/15' : index % 2 ? 'bg-muted' : '',
             p.id === me ? 'cursor-default' : 'hover:bg-elevated',
           ]"
         >
-          <span class="w-6 shrink-0 text-center text-xs font-semibold text-muted">#{{ p.rank }}</span>
-          <span class="relative">
-            <PlayerAvatar :avatar="p.avatar" :size="36" :muted="!p.connected" />
-            <UIcon v-if="room.drawerId === p.id" name="i-lucide-pencil" class="absolute -right-1 -bottom-1 size-4 rounded-full bg-[var(--color-brand)] p-0.5 text-white" />
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="flex items-center gap-1">
-              <span class="truncate text-sm font-semibold" :class="p.connected ? 'text-highlighted' : 'text-dimmed'">{{ p.name }}</span>
-              <span v-if="p.id === me" class="text-xs text-muted">(jij)</span>
+          <span class="w-7 shrink-0 text-sm font-bold text-muted tabular-nums">#{{ p.rank }}</span>
+          <span class="min-w-0 flex-1 text-center">
+            <span class="flex items-center justify-center gap-1">
+              <span class="truncate text-sm font-semibold" :class="p.id === me ? 'text-primary' : p.connected ? 'text-highlighted' : 'text-dimmed'">{{ p.name }}<template v-if="p.id === me"> (jij)</template></span>
               <UIcon v-if="room.hostId === p.id" name="i-lucide-crown" class="size-3.5 shrink-0 text-warning" aria-label="Host" />
               <UTooltip v-if="p.account" text="Ingelogd met een Atlesque-account">
                 <UIcon name="i-lucide-badge-check" class="size-3.5 shrink-0 text-info" aria-label="Atlesque-account" />
               </UTooltip>
             </span>
-            <span class="block text-xs text-muted">{{ p.score }} punten<span v-if="!p.connected"> · weg</span></span>
+            <span class="block text-xs text-muted tabular-nums">{{ p.score }} punten<span v-if="!p.connected"> · weg</span></span>
           </span>
-          <UIcon v-if="p.reaction === 'like'" name="i-lucide-thumbs-up" class="size-4 shrink-0 text-success" aria-label="Vindt het leuk" />
-          <UIcon v-else-if="p.reaction === 'dislike'" name="i-lucide-thumbs-down" class="size-4 shrink-0 text-error" aria-label="Vindt het niet leuk" />
-          <UIcon v-if="p.guessed" name="i-lucide-check" class="size-4 shrink-0 text-success" aria-label="Geraden" />
+          <span class="relative shrink-0">
+            <PlayerAvatar :avatar="p.avatar" :size="40" :muted="!p.connected" />
+            <UIcon v-if="room.drawerId === p.id" name="i-lucide-pencil" class="absolute -bottom-0.5 -left-1 size-5 rounded-full bg-[var(--color-brand)] p-0.5 text-white" aria-label="Tekent" />
+            <UIcon v-if="p.reaction === 'like'" name="i-lucide-thumbs-up" class="absolute -top-0.5 -right-1 size-4 text-success" aria-label="Vindt het leuk" />
+            <UIcon v-else-if="p.reaction === 'dislike'" name="i-lucide-thumbs-down" class="absolute -top-0.5 -right-1 size-4 text-error" aria-label="Vindt het niet leuk" />
+          </span>
         </button>
       </UDropdownMenu>
     </li>

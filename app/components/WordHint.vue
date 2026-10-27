@@ -23,12 +23,12 @@ const counts = computed(() => {
   <div class="flex min-h-12 flex-col items-center justify-center text-center">
     <template v-if="room.phase === 'drawing'">
       <p class="text-xs font-semibold tracking-wide text-muted uppercase">
-        {{ room.drawerId === me ? 'Jij tekent' : guessed ? 'Geraden!' : room.hint ? 'Raad het woord' : 'Raad het woord (verborgen)' }}
+        {{ room.drawerId === me ? 'Teken dit' : guessed ? 'Geraden!' : room.hint ? 'Raad het woord' : 'Raad het woord (verborgen)' }}
       </p>
       <p v-if="room.word && (room.drawerId === me || guessed)" class="font-display text-2xl tracking-wide text-highlighted">{{ room.word }}</p>
-      <p v-else-if="room.hint" class="flex flex-wrap items-end justify-center gap-x-1.5 font-mono text-2xl font-bold text-highlighted" :aria-label="`${room.hint.length} tekens`">
-        <span v-for="(ch, index) in room.hint" :key="index" :class="ch === ' ' ? 'w-3' : 'w-5 border-b-[3px] border-current leading-7'">{{ ch === ' ' ? '' : ch ?? '' }}</span>
-        <sup class="ms-1 font-sans text-xs font-medium text-muted">{{ counts }}</sup>
+      <p v-else-if="room.hint" class="flex flex-wrap items-end justify-center gap-x-1 font-mono text-xl font-bold text-highlighted sm:gap-x-1.5 sm:text-2xl" :aria-label="`${room.hint.length} tekens`">
+        <span v-for="(ch, index) in room.hint" :key="index" :class="ch === ' ' ? 'w-2 sm:w-3' : 'w-3.5 border-b-[3px] border-current leading-6 sm:w-5 sm:leading-7'">{{ ch === ' ' ? '' : ch ?? '' }}</span>
+        <span class="ms-1 font-sans text-xs leading-5 font-medium text-muted">{{ counts }}</span>
       </p>
       <p v-else class="font-display text-2xl text-highlighted">? ? ?</p>
     </template>

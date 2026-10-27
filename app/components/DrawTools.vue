@@ -1,5 +1,6 @@
 <script setup lang="ts">
-// The drawer's toolbar: colors, brush sizes, brush / eraser / fill, undo and clear. Keys: B, E, F, Ctrl/Cmd+Z.
+// The drawer's toolbar: colors, brush sizes, brush / eraser / fill, undo and clear. The keys are set in the settings
+// dialog (useHotkeys); Ctrl/Cmd+Z always undoes.
 import { PALETTE, SIZES } from '#shared/protocol';
 import type { Tool } from './GameBoard.vue';
 
@@ -7,24 +8,20 @@ const tool = defineModel<Tool>('tool', { required: true });
 const color = defineModel<number>('color', { required: true });
 const size = defineModel<number>('size', { required: true });
 const emit = defineEmits<{ undo: []; clear: [] }>();
+const { keys, match } = useHotkeys();
 
-const tools: { value: Tool; label: string; icon: string; key: string }[] = [
-  { value: 'brush', label: 'Penseel (B)', icon: 'i-lucide-pencil', key: 'b' },
-  { value: 'eraser', label: 'Gom (E)', icon: 'i-lucide-eraser', key: 'e' },
-  { value: 'fill', label: 'Emmer (F)', icon: 'i-lucide-paint-bucket', key: 'f' },
-];
+const tools = computed<{ value: Tool; label: string; icon: string }[]>(() => [
+  { value: 'brush', label: `Penseel (${keys.value.brush.toUpperCase()})`, icon: 'i-lucide-pencil' },
+  { value: 'eraser', label: `Gum (${keys.value.eraser.toUpperCase()})`, icon: 'i-lucide-eraser' },
+  { value: 'fill', label: `Emmer (${keys.value.fill.toUpperCase()})`, icon: 'i-lucide-paint-bucket' },
+]);
 
 function onKey(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null;
-  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-    event.preventDefault();
-    emit('undo');
-    return;
-  }
-  if (event.ctrlKey || event.metaKey || event.altKey) return;
-  const match = tools.find((t) => t.key === event.key.toLowerCase());
-  if (match) tool.value = match.value;
+  const action = match(event);
+  if (!action) return;
+  event.preventDefault();
+  if (action === 'undo') emit('undo');
+  else tool.value = action;
 }
 onMounted(() => window.addEventListener('keydown', onKey));
 onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
@@ -55,11 +52,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         role="radio"
         :aria-checked="size === index"
         :aria-label="`Dikte ${index + 1}`"
-        class="grid size-9 place-items-center rounded-md border border-default hover:bg-elevated"
-        :class="size === index ? 'bg-elevated ring-2 ring-primary' : ''"
+        class="grid size-9 place-items-center rounded-md border border-default bg-white hover:bg-neutral-100"
+        :class="size === index ? 'ring-2 ring-primary' : ''"
         @click="size = index"
       >
-        <span class="rounded-full bg-highlighted" :style="{ width: `${Math.min(26, 3 + width * 0.55)}px`, height: `${Math.min(26, 3 + width * 0.55)}px`, background: tool === 'eraser' ? undefined : PALETTE[color] === '#ffffff' ? '#cfd1d6' : PALETTE[color] }" />
+        <span class="rounded-full" :style="{ width: `${Math.min(26, 3 + width * 0.55)}px`, height: `${Math.min(26, 3 + width * 0.55)}px`, background: tool === 'eraser' || PALETTE[color] === '#ffffff' ? '#9aa3ad' : PALETTE[color] }" />
       </button>
     </div>
 
@@ -70,7 +67,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
     </div>
 
     <div class="ms-auto flex items-center gap-1">
-      <UTooltip text="Ongedaan maken (Ctrl+Z)">
+      <UTooltip :text="`Ongedaan maken (${keys.undo.toUpperCase()})`">
         <UButton icon="i-lucide-undo-2" color="neutral" variant="outline" square aria-label="Ongedaan maken" @click="emit('undo')" />
       </UTooltip>
       <UTooltip text="Alles wissen">

@@ -33,27 +33,24 @@ function join() {
 
 <template>
   <GameRoom v-if="joined" :code="code" />
-  <div v-else class="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-4 py-8">
-    <div class="text-center"><AppLogo size="lg" /></div>
-    <UCard v-if="info && !info.exists" :ui="{ body: 'text-center' }">
+  <div v-else class="flex min-h-dvh flex-col items-center bg-muted px-4 py-10">
+    <NuxtLink to="/" aria-label="Sketch, naar het begin"><AppLogo size="lg" /></NuxtLink>
+
+    <UCard v-if="info && !info.exists" class="mt-8 w-full max-w-md" :ui="{ body: 'text-center' }">
       <p class="font-display text-2xl text-highlighted">Deze kamer bestaat niet (meer)</p>
       <p class="mt-2 text-sm text-muted">Vraag een nieuwe link of start zelf een kamer.</p>
       <UButton to="/" label="Naar het begin" class="mt-4" />
     </UCard>
-    <UCard v-else :ui="{ body: 'flex flex-col gap-5' }">
-      <div>
-        <h1 class="font-display text-2xl text-highlighted">Je bent uitgenodigd</h1>
-        <p class="text-sm text-muted">
-          Kamer <span class="font-mono">{{ code }}</span>
-          <template v-if="info?.exists"> · {{ info.players }} van {{ info.maxPlayers }} spelers</template>
-        </p>
-      </div>
-      <UFormField label="Je naam" required>
-        <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Hoe heet je?" size="xl" class="w-full" autofocus @keydown.enter="join" />
-      </UFormField>
+
+    <UCard v-else class="mt-8 w-full max-w-md" :ui="{ body: 'flex flex-col gap-4' }">
+      <p class="text-center text-toned">
+        Je bent uitgenodigd in kamer <span class="font-mono font-semibold text-highlighted">{{ code }}</span>
+        <template v-if="info?.exists"><br><span class="text-sm text-muted">{{ info.players }} van {{ info.maxPlayers }} spelers</span></template>
+      </p>
+      <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Je naam" size="xl" class="w-full" aria-label="Je naam" autofocus @keydown.enter="join" />
       <AvatarEditor v-model="profile.avatar" />
-      <UButton :label="full ? 'Deze kamer is vol' : 'Meedoen'" icon="i-lucide-play" size="xl" block :disabled="!profile.name.trim() || full || !info" @click="join" />
-      <AccountPanel />
+      <UButton :label="full ? 'Deze kamer is vol' : 'Meedoen!'" size="xl" block class="py-3 text-xl font-bold" :disabled="!profile.name.trim() || full || !info" @click="join" />
+      <AccountLine />
     </UCard>
   </div>
 </template>

@@ -53,6 +53,7 @@ export default defineNuxtConfig({
         'lucide:mic-off', 'lucide:mic', 'lucide:skip-forward', 'lucide:square', 'lucide:x', 'lucide:send', 'lucide:refresh-cw',
         'lucide:circle-check', 'lucide:triangle-alert', 'lucide:info', 'lucide:loader-circle', 'lucide:badge-check', 'lucide:trophy',
         'lucide:clock', 'lucide:external-link', 'lucide:door-closed', 'lucide:megaphone', 'lucide:history', 'lucide:search',
+        'lucide:settings', 'lucide:keyboard', 'lucide:sun-moon', 'lucide:message-circle', 'lucide:sparkles', 'lucide:shuffle',
       ],
     },
   },

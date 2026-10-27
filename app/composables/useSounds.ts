@@ -1,4 +1,5 @@
 // Little synthesized sounds (no audio files): Web Audio tones for joins, guesses, turns and the last seconds.
+// The volume (0–100, set in the settings dialog) is remembered in this browser.
 
 export type Sound = 'join' | 'leave' | 'guessed' | 'correct' | 'close' | 'turn' | 'myturn' | 'tick' | 'reveal' | 'end' | 'kick';
 
@@ -17,37 +18,45 @@ const NOTES: Record<Sound, [number, number, OscillatorType?, number?][]> = {
   kick: [[220, 0.15, 'sawtooth', 0], [165, 0.2, 'sawtooth', 0.15]],
 };
 
+const KEY = 'sketch-volume';
 let audio: AudioContext | null = null;
 
-export function useSounds() {
-  const muted = useState<boolean>('muted', () => {
-    try {
-      return localStorage.getItem('sketch-muted') === '1';
-    } catch {
-      return false;
-    }
-  });
+function load() {
+  try {
+    const saved = localStorage.getItem(KEY);
+    // the old on/off switch: muted meant 0
+    if (saved === null) return localStorage.getItem('sketch-muted') === '1' ? 0 : 80;
+    const value = Number(saved);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : 80;
+  } catch {
+    return 80;
+  }
+}
 
-  function toggle() {
-    muted.value = !muted.value;
+export function useSounds() {
+  const volume = useState<number>('volume', load);
+
+  function setVolume(value: number) {
+    volume.value = Math.max(0, Math.min(100, Math.round(value)));
     try {
-      localStorage.setItem('sketch-muted', muted.value ? '1' : '0');
+      localStorage.setItem(KEY, String(volume.value));
     } catch {
       /* storage blocked */
     }
   }
 
   function play(sound: Sound) {
-    if (muted.value || typeof AudioContext === 'undefined') return;
+    if (!volume.value || typeof AudioContext === 'undefined') return;
     audio ??= new AudioContext();
     if (audio.state === 'suspended') void audio.resume();
     const start = audio.currentTime + 0.01;
+    const loudness = (volume.value / 100) ** 2;
     for (const [freq, duration, wave = 'sine', delay = 0] of NOTES[sound]) {
       const osc = audio.createOscillator();
       const gain = audio.createGain();
       osc.type = wave;
       osc.frequency.value = freq;
-      const level = wave === 'square' || wave === 'sawtooth' ? 0.035 : 0.08;
+      const level = (wave === 'square' || wave === 'sawtooth' ? 0.035 : 0.08) * loudness;
       gain.gain.setValueAtTime(0, start + delay);
       gain.gain.linearRampToValueAtTime(level, start + delay + 0.01);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + delay + duration);
@@ -57,5 +66,5 @@ export function useSounds() {
     }
   }
 
-  return { muted, toggle, play };
+  return { volume, setVolume, play };
 }

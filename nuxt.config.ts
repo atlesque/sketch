@@ -1,3 +1,6 @@
+const SITE = 'https://sketch.atlesque.dev/';
+const DESCRIPTION = 'Tekenen en raden met je team: een intern spel voor tijdens de Scrum-ceremonies.';
+
 export default defineNuxtConfig({
   extends: ['./ui'],
   compatibilityDate: '2026-10-01',
@@ -7,10 +10,26 @@ export default defineNuxtConfig({
   app: {
     head: {
       title: 'Sketch',
-      link: [{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
+      link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+        { rel: 'canonical', href: SITE },
+      ],
+      // An internal game, so it stays out of search (this tag, X-Robots-Tag in public/_headers, robots.txt). Every route
+      // gets the same static head (ssr: false), so a shared room link previews as the home page. The share image is
+      // public/og-image.png, rendered from scripts/og-image.html.
       meta: [
         { name: 'robots', content: 'noindex' },
-        { name: 'description', content: 'Tekenen en raden met je team: een intern spel voor tijdens de Scrum-ceremonies.' },
+        { name: 'description', content: DESCRIPTION },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:title', content: 'Sketch' },
+        { property: 'og:description', content: DESCRIPTION },
+        { property: 'og:url', content: SITE },
+        { property: 'og:image', content: `${SITE}og-image.png` },
+        { property: 'og:image:type', content: 'image/png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        { property: 'og:image:alt', content: 'Het Sketch-logo, een rij getekende figuurtjes en een tekening van een huisje onder de zon' },
+        { name: 'twitter:card', content: 'summary_large_image' },
       ],
       // The shared opt-in analytics banner every Atlesque tool loads.
       script: [{ src: 'https://tools.atlesque.dev/consent.js', defer: true }],

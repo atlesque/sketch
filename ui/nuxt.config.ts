@@ -15,10 +15,9 @@ export default defineNuxtConfig({
   app: {
     head: {
       htmlAttrs: { lang: 'nl' },
-      meta: [
-        { name: 'theme-color', content: '#f6f7f9', media: '(prefers-color-scheme: light)' },
-        { name: 'theme-color', content: '#0d131c', media: '(prefers-color-scheme: dark)' },
-      ],
+      // One theme-color, so every crawler reads the same value; boot.js and plugins/theme-color switch it to #0d131c in
+      // dark mode.
+      meta: [{ name: 'theme-color', content: '#f6f7f9' }],
       link: [{ rel: 'preload', href: '/fonts/plus-jakarta-sans-latin-wght-normal.woff2', as: 'font', type: 'font/woff2', crossorigin: '' }],
       // A classic script that applies the saved theme before first paint.
       script: [{ src: '/boot.js', tagPosition: 'head', tagPriority: 'critical' }],

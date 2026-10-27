@@ -1,0 +1,50 @@
+# Sketch
+
+Draw and guess with your team, for the Scrum ceremonies. One player draws a word, the others guess it in the chat; quick guesses score the most, and the drawer scores for every player who gets it. At **https://sketch.atlesque.dev**.
+
+## What players get
+
+- **Spelen** (play) drops you in an open room with whoever is playing; it starts by itself once two people are in. **Privékamer maken** (private room) makes a room you set up yourself (players, rounds, drawing time, word choices, hints, a hidden-word mode, custom words or only custom words) and share with a link (`/r/<code>`).
+- The game is in Dutch, with 1,900 everyday Dutch words built in (`shared/words-nl.ts`). Custom words get about half the choices when a room has them.
+- Turns: the drawer picks a word (15 s), draws it (brush, eraser, fill, five sizes, 24 colors, undo, clear; keys B / E / F / Ctrl+Z), and the others guess. Letters are revealed as hints over the turn, and at least half the word always stays hidden. Correct guesses are never shown; "nearly right" (one typo, two for long words) is told privately. Players who guessed and the drawer chat among themselves in green. The drawer can't type the word.
+- Like or dislike a drawing, vote to kick (a majority of the others), report a player to the admin. In a private room, the host can kick and hand over the host role.
+- Guests play with just a name and an avatar. **Inloggen of registreren** (sign in or register) uses an Atlesque account ([Atlesque Play](https://github.com/atlesque/mbp-games), play.atlesque.dev; the first sign-in creates the account): signed-in players get a badge in rooms and their totals kept (also shown on the Atlesque Play hub).
+- A dropped connection (a reload, a phone that slept) comes back as the same player with the same score for 45 seconds.
+
+## Admin (`/admin`)
+
+Behind Cloudflare Access (only the emails in `ALLOWED_EMAILS`); the admin API checks the Access token itself as well (`worker/access.ts`).
+
+- **Live rooms**: every open room, and per room a live view: the board as it is being drawn, the word, all chat (including correct guesses and blocked spoilers), the players with their account, device and IP, and controls: start, skip turn, end game, close room, message everyone, mute, make host, kick, ban (account, browser, IP).
+- **Games**: every game with its ranking and turns (drawer, word, who guessed, likes, points) and each turn's drawing, replayable and downloadable as PNG.
+- **Audit log**: everything that happens in the rooms (joins, chat and guesses, turns, votes, kicks, reports, settings) and every admin action, filterable and exportable as CSV. Kept for 180 days.
+- **Reports**, **Bans** (lift, add by hand, with an expiry) and **Players** (accounts with totals, and every browser that joined lately).
+
+## How it works
+
+- `worker/index.ts`: the Worker. Pages come from static assets (Nuxt, `ssr: false`); only `/api/*` runs the Worker.
+- `worker/room.ts`: one Durable Object per room (named by its code). It is the authority: words, the clock, hints, guesses, scores. WebSockets use the hibernation API; the state is saved after every change and the drawing's ops go to the object's SQLite, so a room carries on after hibernating. Alarms drive the clock.
+- `shared/protocol.ts` is the wire format; `shared/game.ts` the rules (tested in `tests/game.test.ts`).
+- D1 (`migrations/`): rooms (matchmaking and the admin's live list), games, turns, the audit log (`events`), bans, reports, account totals. R2 (`sketch-drawings`): each finished turn's drawing as its ops.
+- Atlesque Play checks sign-in tokens over a service binding (`PLAY` → `mbp-games`); see `worker/play.ts` and `app/composables/useAccount.ts`.
+- A nightly cron prunes the audit log and closes room rows a deploy left open.
+
+## Running it
+
+```sh
+pnpm install
+pnpm db:migrate:local
+pnpm build && pnpm preview   # http://127.0.0.1:8840 with local D1/R2/Durable Objects, no Access
+pnpm test                    # the rules
+node tests/play.mjs          # three bots play a whole game against the preview and check what each may see
+```
+
+`pnpm dev` (Nuxt on :3340) with `pnpm dev:api` (the Worker on :8840) is the fast loop for the pages. To try sign-in locally, run Atlesque Play (`npm run dev` in mbp-games, :8787), build with `NUXT_PUBLIC_PLAY_URL=http://127.0.0.1:8787` and start the preview with `--var PLAY_URL:http://127.0.0.1:8787`; with `SKETCH_TOKEN=<token>`, `tests/play.mjs` plays one bot signed in.
+
+## Deploying
+
+Pushing to `main` deploys: Cloudflare Workers Builds runs `pnpm run build` and `npx wrangler deploy`. A new migration in `migrations/` needs `pnpm db:migrate` once (Workers Builds doesn't apply them).
+
+Cloudflare: Worker `sketch` on the custom domain `sketch.atlesque.dev`, D1 `sketch`, R2 `sketch-drawings`, Durable Object class `Room` (migration `v1`), Access application "Sketch admin" for `/admin` and `/api/admin` (its AUD is `ACCESS_AUD` in `wrangler.jsonc`).
+
+Privacy: the page loads the shared consent banner (analytics only after opt-in). For moderation, names, chat, drawings, IP addresses and browser ids are kept for 180 days.

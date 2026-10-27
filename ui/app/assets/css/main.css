@@ -1,0 +1,179 @@
+/* Sketch: the Junk Desk design system on Nuxt UI with a coral marker as the brand (secondary, and primary in dark mode).
+   Colors are defined here instead of by Nuxt UI's runtime plugin, which would inject an inline <style> the CSP blocks. */
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@source "../../components";
+@source "../../../../app";
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/plus-jakarta-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("/fonts/plus-jakarta-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "DM Serif Display";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("/fonts/dm-serif-display-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@theme static {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "DM Serif Display", Georgia, "Times New Roman", serif;
+  --color-brand: #ff7a59;
+}
+
+@layer theme {
+  :root, :host {
+    --ui-radius: 0.375rem;
+    /* Ink: the blue-grey neutral of the original design. */
+    --ui-color-neutral-50: #f6f7f9;
+    --ui-color-neutral-100: #f1f3f6;
+    --ui-color-neutral-200: #e2e6ec;
+    --ui-color-neutral-300: #c9d1dc;
+    --ui-color-neutral-400: #9ba7b8;
+    --ui-color-neutral-500: #6b778a;
+    --ui-color-neutral-600: #556174;
+    --ui-color-neutral-700: #3a495e;
+    --ui-color-neutral-800: #1a2431;
+    --ui-color-neutral-900: #141c27;
+    --ui-color-neutral-950: #0d131c;
+    /* Primary: navy in light mode, the coral marker in dark mode. */
+    --ui-color-primary-50: #eef2f7;
+    --ui-color-primary-100: #d9e1ec;
+    --ui-color-primary-200: #b4c3d8;
+    --ui-color-primary-300: #8199bb;
+    --ui-color-primary-400: #4d6890;
+    --ui-color-primary-500: #26426a;
+    --ui-color-primary-600: #172b45;
+    --ui-color-primary-700: #12223a;
+    --ui-color-primary-800: #0e1a2c;
+    --ui-color-primary-900: #0a1320;
+    --ui-color-primary-950: #060c15;
+    /* Secondary: the coral marker, a deeper rust where it must read on white. */
+    --ui-color-secondary-50: #fff4f1;
+    --ui-color-secondary-100: #ffe5de;
+    --ui-color-secondary-200: #ffcabd;
+    --ui-color-secondary-300: #ffa58f;
+    --ui-color-secondary-400: #ff7a59;
+    --ui-color-secondary-500: #f25a35;
+    --ui-color-secondary-600: #d9431f;
+    --ui-color-secondary-700: #b43518;
+    --ui-color-secondary-800: #8f2d18;
+    --ui-color-secondary-900: #742918;
+    --ui-color-secondary-950: #3f1209;
+  --ui-color-success-50: oklch(98.2% 0.018 155.826);
+  --ui-color-success-100: oklch(96.2% 0.044 156.743);
+  --ui-color-success-200: oklch(92.5% 0.084 155.995);
+  --ui-color-success-300: oklch(87.1% 0.15 154.449);
+  --ui-color-success-400: oklch(79.2% 0.209 151.711);
+  --ui-color-success-500: oklch(72.3% 0.219 149.579);
+  --ui-color-success-600: oklch(62.7% 0.194 149.214);
+  --ui-color-success-700: oklch(52.7% 0.154 150.069);
+  --ui-color-success-800: oklch(44.8% 0.119 151.328);
+  --ui-color-success-900: oklch(39.3% 0.095 152.535);
+  --ui-color-success-950: oklch(26.6% 0.065 152.934);
+  --ui-color-info-50: oklch(97.7% 0.013 236.62);
+  --ui-color-info-100: oklch(95.1% 0.026 236.824);
+  --ui-color-info-200: oklch(90.1% 0.058 230.902);
+  --ui-color-info-300: oklch(82.8% 0.111 230.318);
+  --ui-color-info-400: oklch(74.6% 0.16 232.661);
+  --ui-color-info-500: oklch(68.5% 0.169 237.323);
+  --ui-color-info-600: oklch(58.8% 0.158 241.966);
+  --ui-color-info-700: oklch(50% 0.134 242.749);
+  --ui-color-info-800: oklch(44.3% 0.11 240.79);
+  --ui-color-info-900: oklch(39.1% 0.09 240.876);
+  --ui-color-info-950: oklch(29.3% 0.066 243.157);
+  --ui-color-warning-50: oklch(98.7% 0.022 95.277);
+  --ui-color-warning-100: oklch(96.2% 0.059 95.617);
+  --ui-color-warning-200: oklch(92.4% 0.12 95.746);
+  --ui-color-warning-300: oklch(87.9% 0.169 91.605);
+  --ui-color-warning-400: oklch(82.8% 0.189 84.429);
+  --ui-color-warning-500: oklch(76.9% 0.188 70.08);
+  --ui-color-warning-600: oklch(66.6% 0.179 58.318);
+  --ui-color-warning-700: oklch(55.5% 0.163 48.998);
+  --ui-color-warning-800: oklch(47.3% 0.137 46.201);
+  --ui-color-warning-900: oklch(41.4% 0.112 45.904);
+  --ui-color-warning-950: oklch(27.9% 0.077 45.635);
+  --ui-color-error-50: oklch(97.1% 0.013 17.38);
+  --ui-color-error-100: oklch(93.6% 0.032 17.717);
+  --ui-color-error-200: oklch(88.5% 0.062 18.334);
+  --ui-color-error-300: oklch(80.8% 0.114 19.571);
+  --ui-color-error-400: oklch(70.4% 0.191 22.216);
+  --ui-color-error-500: oklch(63.7% 0.237 25.331);
+  --ui-color-error-600: oklch(57.7% 0.245 27.325);
+  --ui-color-error-700: oklch(50.5% 0.213 27.518);
+  --ui-color-error-800: oklch(44.4% 0.177 26.899);
+  --ui-color-error-900: oklch(39.6% 0.141 25.723);
+  --ui-color-error-950: oklch(25.8% 0.092 26.042);
+
+  }
+  :root, :host, .light {
+    --ui-primary: #172b45;
+    --ui-secondary: #b43518;
+    --ui-success: #17703f;
+    --ui-info: var(--ui-color-info-600);
+    --ui-warning: #7a4f00;
+    --ui-error: #b42318;
+    --ui-text: #142338;
+    --ui-text-highlighted: #142338;
+    --ui-text-toned: #3a495e;
+    --ui-text-muted: #556174;
+    --ui-text-dimmed: #6b778a;
+    --ui-bg: #ffffff;
+    --ui-bg-muted: #f6f7f9;
+    --ui-bg-elevated: #f1f3f6;
+    --ui-bg-accented: #e2e6ec;
+    --ui-border: #e2e6ec;
+    --ui-border-muted: #eceff4;
+    --ui-border-accented: #c9d1dc;
+    --app-bg: #f6f7f9;
+  }
+  .dark {
+    --ui-primary: #ff8e70;
+    --ui-secondary: #ff8e70;
+    --ui-success: #6bd8a0;
+    --ui-info: #8fc3ff;
+    --ui-warning: #f2c45a;
+    --ui-error: #ff8f85;
+    --ui-text: #e6ebf2;
+    --ui-text-highlighted: #f4f7fb;
+    --ui-text-toned: #c8d1dd;
+    --ui-text-muted: #9ba7b8;
+    --ui-text-dimmed: #7d899b;
+    --ui-text-inverted: #10202f;
+    --ui-bg: #141c27;
+    --ui-bg-muted: #1a2431;
+    --ui-bg-elevated: #1a2431;
+    --ui-bg-accented: #253141;
+    --ui-border: #253141;
+    --ui-border-muted: #1f2a38;
+    --ui-border-accented: #3a495e;
+    --app-bg: #0d131c;
+  }
+}
+
+@layer base {
+  html { background: var(--app-bg); color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  body { font-family: var(--font-sans); background: var(--app-bg); color: var(--ui-text); -webkit-font-smoothing: antialiased; }
+  ::selection { background: color-mix(in srgb, var(--color-brand) 70%, transparent); color: #142338; }
+}
+
+/* The drawing board is always white paper, in both themes; drawings are made on it and replayed on it. */
+.paper { background: #ffffff; touch-action: none; }
+.paper canvas { display: block; width: 100%; height: 100%; }

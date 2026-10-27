@@ -1,0 +1,49 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sketch",
+  // No account id or resource ids here (the repo is public): Wrangler takes the account from CLOUDFLARE_ACCOUNT_ID
+  // (Workers Builds sets it) and finds the D1 database by its name.
+  "compatibility_date": "2026-10-01",
+  // The Worker only answers /api/*; everything else is the single-page site (the game and /admin).
+  "main": "worker/index.ts",
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": ".output/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "html_handling": "drop-trailing-slash",
+    "run_worker_first": ["/api/*"]
+  },
+  // One Durable Object per room (worker/room.ts), named by the room code. SQLite-backed.
+  "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  // Rooms, games, turns, the audit log, bans, reports, account stats (migrations/).
+  "d1_databases": [{ "binding": "DB", "database_name": "sketch", "migrations_dir": "migrations" }],
+  // Every finished turn's drawing (its ops), replayed in the admin.
+  "r2_buckets": [{ "binding": "DRAWINGS", "bucket_name": "sketch-drawings" }],
+  // Atlesque Play (the mbp-games Worker) checks sign-in tokens.
+  "services": [{ "binding": "PLAY", "service": "mbp-games" }],
+  // A Cloudflare Access app guards /admin and /api/admin/*; the admin API checks its token too (worker/access.ts).
+  // Its settings are Worker secrets, not vars, so they stay out of the repo: ACCESS_TEAM (the Zero Trust team name),
+  // ACCESS_AUD (the app's audience tag) and ALLOWED_EMAILS (comma-separated). See .dev.vars.example.
+  "vars": {
+    "PLAY_URL": "https://play.atlesque.dev"
+  },
+  // 03:41 UTC: audit log retention and stale room rows (worker/index.ts scheduled)
+  "triggers": { "crons": ["41 3 * * *"] },
+  "observability": { "enabled": true },
+  "routes": [{ "pattern": "sketch.atlesque.dev", "custom_domain": true }],
+  // `pnpm dev:api` / launch config "sketch": local D1/R2/Durable Objects, no Access (wrangler dev rewrites the host,
+  // so localhost can't be told apart) and no service binding: sign-in tokens are checked against PLAY_URL over the internet,
+  // or a local Atlesque Play (mbp-games `npm run dev`) with PLAY_URL=http://127.0.0.1:8787.
+  "env": {
+    "dev": {
+      "routes": [],
+      "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "Room" }] },
+      "d1_databases": [{ "binding": "DB", "database_name": "sketch", "migrations_dir": "migrations" }],
+      "r2_buckets": [{ "binding": "DRAWINGS", "bucket_name": "sketch-drawings" }],
+      "vars": { "PLAY_URL": "https://play.atlesque.dev", "DEV_NO_ACCESS": "1" }
+    }
+  }
+}

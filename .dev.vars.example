@@ -1,0 +1,5 @@
+# Copy to .dev.vars to run `wrangler dev` without `--env dev` (the dev environment skips Access, so it needs none of these).
+# In production these are Worker secrets: printf %s "<value>" | npx wrangler secret put <NAME>
+ACCESS_TEAM=your-team
+ACCESS_AUD=the-access-application-aud-tag
+ALLOWED_EMAILS=you@example.com

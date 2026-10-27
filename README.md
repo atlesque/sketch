@@ -45,6 +45,17 @@ node tests/play.mjs          # three bots play a whole game against the preview 
 
 Pushing to `main` deploys: Cloudflare Workers Builds runs `pnpm run build` and `npx wrangler deploy`. A new migration in `migrations/` needs `pnpm db:migrate` once (Workers Builds doesn't apply them).
 
-Cloudflare: Worker `sketch` on the custom domain `sketch.atlesque.dev`, D1 `sketch`, R2 `sketch-drawings`, Durable Object class `Room` (migration `v1`), Access application "Sketch admin" for `/admin` and `/api/admin` (its AUD is `ACCESS_AUD` in `wrangler.jsonc`).
+The repository holds no account details; Cloudflare is configured through the environment:
+
+- **Account**: `CLOUDFLARE_ACCOUNT_ID` (Workers Builds sets it; export it yourself to run Wrangler against the account by hand).
+- **D1**: the binding names the database (`sketch`) but has no id. Wrangler looks it up by name on the first deploy, and later deploys inherit the binding.
+- **Access**: Worker secrets, set once with `printf %s "<value>" | npx wrangler secret put <NAME>`:
+  - `ACCESS_TEAM`: the Zero Trust team name (`<team>.cloudflareaccess.com`)
+  - `ACCESS_AUD`: the audience tag of the Access application that guards `/admin` and `/api/admin`
+  - `ALLOWED_EMAILS`: comma-separated emails that may use the admin
+
+  Without all three the admin API lets nobody in. `.dev.vars.example` lists them for `wrangler dev` without `--env dev`.
+
+Resources: Worker `sketch` on the custom domain `sketch.atlesque.dev`, D1 `sketch`, R2 `sketch-drawings`, Durable Object class `Room` (migration `v1`), a self-hosted Access application covering `sketch.atlesque.dev/admin` and `sketch.atlesque.dev/api/admin`, and a service binding to `mbp-games` (Atlesque Play).
 
 Privacy: the page loads the shared consent banner (analytics only after opt-in). For moderation, names, chat, drawings, IP addresses and browser ids are kept for 180 days.

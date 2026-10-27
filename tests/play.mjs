@@ -88,19 +88,24 @@ for (const b of bots) {
 }
 console.log('results', ranked.map((r) => `#${r.rank} ${r.name} ${r.score}`).join(', '));
 
-// the game is on record (local dev has no Access in front of the admin API)
-const games = await (await fetch(`${BASE}/api/admin/games?room=${code}`)).json();
-assert.equal(games.games?.[0]?.turns, 3, 'the game is in D1 with its turns');
-const game = await (await fetch(`${BASE}/api/admin/games/${games.games[0].id}`)).json();
-assert.equal(game.turns.length, 3);
-assert.ok(game.turns.every((t) => t.drawing_key), 'every turn has its drawing in R2');
-console.log('admin: game and', game.turns.length, 'turns with drawings recorded');
-
-if (TOKEN) {
-  const players = await (await fetch(`${BASE}/api/admin/players`)).json();
-  const stats = players.accounts.find((a) => a.name === 'Ada');
-  assert.ok(stats && stats.games >= 1 && stats.points > 0, 'the signed-in bot has account totals');
-  console.log('account totals:', stats.email, `${stats.games} games, ${stats.wins} wins, ${stats.points} points`);
+// the game is on record; the admin API answers only where Access isn't in front of it (local dev)
+const admin = await fetch(`${BASE}/api/admin/games?room=${code}`, { redirect: 'manual' });
+if (admin.ok && admin.headers.get('content-type')?.includes('json')) {
+  const games = await admin.json();
+  assert.equal(games.games?.[0]?.turns, 3, 'the game is in D1 with its turns');
+  const game = await (await fetch(`${BASE}/api/admin/games/${games.games[0].id}`)).json();
+  assert.equal(game.turns.length, 3);
+  assert.ok(game.turns.every((t) => t.drawing_key), 'every turn has its drawing in R2');
+  console.log('admin: game and', game.turns.length, 'turns with drawings recorded');
+  if (TOKEN) {
+    const players = await (await fetch(`${BASE}/api/admin/players`)).json();
+    const stats = players.accounts.find((a) => a.name === 'Ada');
+    assert.ok(stats && stats.games >= 1 && stats.points > 0, 'the signed-in bot has account totals');
+    console.log('account totals:', stats.email, `${stats.games} games, ${stats.wins} wins, ${stats.points} points`);
+  }
+} else {
+  assert.ok([302, 401, 403].includes(admin.status), `the admin API is locked (got ${admin.status})`);
+  console.log(`admin API is behind Access here (${admin.status}); its checks were skipped`);
 }
 
 for (const b of bots) b.send({ t: 'leave' });

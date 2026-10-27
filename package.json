@@ -7,12 +7,14 @@
     "dev": "nuxt dev --port 3340 --host 127.0.0.1",
     "dev:api": "mkdir -p .output/public && wrangler dev --port 8840 --ip 127.0.0.1 --env dev",
     "build": "nuxt generate",
+    "deploy": "pnpm run db:restore-point && pnpm run db:migrate && wrangler deploy",
     "preview": "wrangler dev --port 8840 --ip 127.0.0.1 --env dev",
     "test": "node --test \"tests/**/*.test.ts\"",
     "typecheck": "nuxt typecheck && tsc -p worker",
     "types": "wrangler types worker/worker-configuration.d.ts",
     "db:migrate": "wrangler d1 migrations apply sketch --remote",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local --env dev"
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --env dev",
+    "db:restore-point": "node scripts/restore-point.mjs"
   },
   "dependencies": {
     "@iconify-json/lucide": "1.2.145",

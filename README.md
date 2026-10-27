@@ -43,7 +43,19 @@ node tests/play.mjs          # three bots play a whole game against the preview 
 
 ## Deploying
 
-Pushing to `main` deploys: Cloudflare Workers Builds runs `pnpm run build` and `npx wrangler deploy`. A new migration in `migrations/` needs `pnpm db:migrate` once (Workers Builds doesn't apply them).
+Pushing to `main` deploys: Cloudflare Workers Builds runs `pnpm run build`, then `pnpm run deploy`, which
+
+1. prints a D1 Time Travel bookmark (`scripts/restore-point.mjs`), so the build log says where to roll the database back to;
+2. applies the new migrations in `migrations/` (Wrangler records which ones ran, so each runs once);
+3. deploys the Worker.
+
+If a migration fails, the build stops before the deploy, and the live site keeps its code and database as they were.
+
+### Changing the database
+
+- Add the next numbered file to `migrations/` (`0002_….sql`) and try it with `pnpm db:migrate:local`. Pushing it to `main` applies it.
+- A migration runs about a minute before the new code is live, so the code that's still running has to keep working with it: add tables, or columns with a default. Drop or rename something in a later push, once the code no longer uses it.
+- To undo, restore the bookmark from the build log: `wrangler d1 time-travel restore <database id> --bookmark=<bookmark>` (or `--timestamp=<time>`; Time Travel reaches back 30 days). Time Travel needs the database id, which `wrangler d1 list` shows.
 
 The repository holds no account details; Cloudflare is configured through the environment:
 

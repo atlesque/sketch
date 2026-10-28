@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// The gear in the game's top bar: volume, the drawing keys, the theme, and the room (invite link, leaving).
+// The gear in the game's top bar: volume, the drawing keys, the theme, the cookie settings, and the room (invite link, leaving).
 import type { Theme } from '../../ui/app/composables/useTheme';
 import { ACTIONS, type Action } from '~/composables/useHotkeys';
 
@@ -34,10 +34,24 @@ async function copyInvite() {
     toast.add({ title: invite.value, description: 'Kopieer deze link en deel hem met je team.', color: 'info' });
   }
 }
+
+// The shared consent banner (consent.js, if it loaded) opens once this dialog has closed, so the dialog's focus trap
+// doesn't keep the focus.
+const consent = () => (window as { AtlesqueConsent?: { open(): void } }).AtlesqueConsent;
+let consentNext = false;
+function openConsent() {
+  consentNext = true;
+  open.value = false;
+}
+function afterLeave() {
+  if (!consentNext) return;
+  consentNext = false;
+  consent()?.open();
+}
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Instellingen" :ui="{ body: 'flex flex-col gap-6' }">
+  <UModal v-model:open="open" title="Instellingen" :ui="{ body: 'flex flex-col gap-6' }" @after:leave="afterLeave">
     <template #body>
       <section class="flex flex-col gap-2">
         <h3 class="flex items-center gap-2 font-semibold text-highlighted">
@@ -63,6 +77,14 @@ async function copyInvite() {
         <h3 class="flex items-center gap-2 font-semibold text-highlighted"><UIcon name="i-lucide-sun-moon" class="size-5" /> Thema</h3>
         <div class="grid grid-cols-3 gap-2">
           <UButton v-for="t in themes" :key="t.value" :label="t.label" :icon="t.icon" block :color="theme === t.value ? 'primary' : 'neutral'" :variant="theme === t.value ? 'solid' : 'outline'" @click="setTheme(t.value)" />
+        </div>
+      </section>
+
+      <section class="flex flex-col gap-2">
+        <h3 class="flex items-center gap-2 font-semibold text-highlighted"><UIcon name="i-lucide-shield" class="size-5" /> Privacy</h3>
+        <div class="flex flex-wrap gap-2">
+          <UButton v-if="consent()" label="Cookie-instellingen" color="neutral" variant="outline" @click="openConsent" />
+          <UButton label="Privacybeleid" to="https://tools.atlesque.dev/privacy" target="_blank" trailing-icon="i-lucide-external-link" color="neutral" variant="ghost" />
         </div>
       </section>
 

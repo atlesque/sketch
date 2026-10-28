@@ -31,8 +31,9 @@ export default defineNuxtConfig({
         { property: 'og:image:alt', content: 'Het Sketch-logo, een rij getekende figuurtjes en een tekening van een huisje onder de zon' },
         { name: 'twitter:card', content: 'summary_large_image' },
       ],
-      // The shared opt-in analytics banner every Atlesque tool loads.
-      script: [{ src: 'https://tools.atlesque.dev/consent.js', defer: true }],
+      // The shared opt-in analytics banner every Atlesque tool loads. Without its floating privacy button, which covers the
+      // guess field on phones; the home footer and the gear in a game reopen the banner instead.
+      script: [{ src: 'https://tools.atlesque.dev/consent.js', defer: true, 'data-launcher': 'none' }],
     },
   },
   runtimeConfig: {

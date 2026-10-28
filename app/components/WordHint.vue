@@ -17,6 +17,8 @@ const counts = computed(() => {
     .map((part) => part.replace(/[^x]/g, '').length || '')
     .join(' ');
 });
+/** Long words get smaller blanks on phones, so they still fit on one line in the top bar. */
+const long = computed(() => (props.room.hint?.length ?? 0) > 11);
 </script>
 
 <template>
@@ -26,8 +28,8 @@ const counts = computed(() => {
         {{ room.drawerId === me ? 'Teken dit' : guessed ? 'Geraden!' : room.hint ? 'Raad het woord' : 'Raad het woord (verborgen)' }}
       </p>
       <p v-if="room.word && (room.drawerId === me || guessed)" class="font-display text-2xl tracking-wide text-highlighted">{{ room.word }}</p>
-      <p v-else-if="room.hint" class="flex flex-wrap items-end justify-center gap-x-1 font-mono text-xl font-bold text-highlighted sm:gap-x-1.5 sm:text-2xl" :aria-label="`${room.hint.length} tekens`">
-        <span v-for="(ch, index) in room.hint" :key="index" :class="ch === ' ' ? 'w-2 sm:w-3' : 'w-3.5 border-b-[3px] border-current leading-6 sm:w-5 sm:leading-7'">{{ ch === ' ' ? '' : ch ?? '' }}</span>
+      <p v-else-if="room.hint" class="flex flex-wrap items-end justify-center font-mono font-bold text-highlighted sm:gap-x-1.5 sm:text-2xl" :class="long ? 'gap-x-0.5 text-base' : 'gap-x-1 text-xl'" :aria-label="`${room.hint.length} tekens`">
+        <span v-for="(ch, index) in room.hint" :key="index" :class="ch === ' ' ? 'w-2 sm:w-3' : [long ? 'w-2.5' : 'w-3.5', 'border-b-[3px] border-current leading-6 sm:w-5 sm:leading-7']">{{ ch === ' ' ? '' : ch ?? '' }}</span>
         <span class="ms-1 font-sans text-xs leading-5 font-medium text-muted">{{ counts }}</span>
       </p>
       <p v-else class="font-display text-2xl text-highlighted">? ? ?</p>

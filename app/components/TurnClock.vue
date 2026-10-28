@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // A round countdown to the room's deadline (server clock, lined up with `offset`). Ticks through the last seconds.
-const props = defineProps<{ deadline: number | null; total: number; offset: number; ticking?: boolean }>();
+const props = defineProps<{ deadline: number | null; total: number; offset: number; ticking?: boolean; small?: boolean }>();
 const emit = defineEmits<{ tick: [number] }>();
 
 const now = ref(Date.now());
@@ -19,7 +19,7 @@ const C = 2 * Math.PI * R;
 </script>
 
 <template>
-  <div class="relative grid size-14 shrink-0 place-items-center" role="timer" :aria-label="left === null ? 'Geen tijdslimiet' : `${left} seconden`">
+  <div class="relative grid shrink-0 place-items-center" :class="small ? 'size-11' : 'size-14'" role="timer" :aria-label="left === null ? 'Geen tijdslimiet' : `${left} seconden`">
     <svg viewBox="0 0 48 48" class="absolute inset-0 -rotate-90">
       <circle cx="24" cy="24" :r="R" fill="none" stroke="var(--ui-border)" stroke-width="5" />
       <circle
@@ -35,6 +35,6 @@ const C = 2 * Math.PI * R;
         class="transition-[stroke-dashoffset] duration-200"
       />
     </svg>
-    <span class="relative text-base font-bold tabular-nums" :class="urgent ? 'text-error' : 'text-highlighted'">{{ left ?? '∞' }}</span>
+    <span class="relative font-bold tabular-nums" :class="[small ? 'text-sm' : 'text-base', urgent ? 'text-error' : 'text-highlighted']">{{ left ?? '∞' }}</span>
   </div>
 </template>

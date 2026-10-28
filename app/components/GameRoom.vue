@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // The game screen: one bar on top (clock and round, the word, the settings), then players on the left, the board and
-// the drawer's tools in the middle and chat on the right (players and chat side by side under the board on phones).
-// Lobby, word choice, turn result and podium are overlays on the board.
+// the drawer's tools in the middle and chat on the right. Lobby, word choice, turn result and podium are overlays on
+// the board. Phones during a game: the screen is exactly what you can see (also with the keyboard open): the bar, the
+// board as big as fits, the drawer's tools in one row, the chat and the guess field, nothing to scroll. The players
+// are behind a button in the bar, and with too little room for the chat its newest lines float over the board.
 import { TIMES, type Op, type PlayerView, type RoomView } from '#shared/protocol';
 import { ConfirmModal, ReportModal } from '#components';
 import type { Board } from '~/utils/paint';
@@ -65,6 +67,40 @@ const podium = computed(() => {
   return [results[1], results[0], results[2]].filter(Boolean) as NonNullable<RoomView['results']>;
 });
 
+// ---------- phones ----------
+const phone = useMedia('(max-width: 1023px)');
+const compact = computed(() => phone.value && !!room.value && room.value.phase !== 'lobby' && !bye.value);
+const { style: fitStyle } = useViewportFit(compact);
+const playersOpen = ref(false);
+watch(compact, (on) => !on && (playersOpen.value = false));
+
+// the space between the bar and the bottom of the screen, which the board, the tools and the chat share
+const region = ref<HTMLElement>();
+const regionSize = ref({ w: 0, h: 0 });
+let regionObserver: ResizeObserver | null = null;
+watch(region, (el) => {
+  regionObserver?.disconnect();
+  if (!el) return;
+  regionObserver = new ResizeObserver(() => (regionSize.value = { w: el.clientWidth, h: el.clientHeight }));
+  regionObserver.observe(el);
+});
+onBeforeUnmount(() => regionObserver?.disconnect());
+
+const GAP = 6; // gap-1.5
+const INPUT_H = 52; // the chat box with only its input
+const TOOLS_H = 46; // DrawTools compact
+const drawingNow = computed(() => isDrawer.value && room.value?.phase === 'drawing');
+const toolsH = computed(() => (drawingNow.value ? TOOLS_H + GAP : 0));
+/** The board's width on phones: as wide as the screen, or less so it still fits above the tools and the guess field. */
+const boardWidth = computed(() => {
+  const { w, h } = regionSize.value;
+  return Math.max(0, Math.min(w, ((h - toolsH.value - GAP - INPUT_H) * 4) / 3));
+});
+/** With less than this left for chat lines under the board (keyboard open), they float over the board instead. */
+const bubbles = computed(() => compact.value && regionSize.value.h - (boardWidth.value * 3) / 4 - toolsH.value - GAP - INPUT_H < 72);
+const guessers = computed(() => (room.value?.players.length ?? 1) - 1);
+const guessedCount = computed(() => room.value?.players.filter((p) => p.guessed).length ?? 0);
+
 // ---------- sounds and title ----------
 watch(
   () => [room.value?.phase, room.value?.drawerId] as const,
@@ -119,15 +155,15 @@ async function leave() {
 
 
 <template>
-  <div class="flex min-h-dvh flex-col bg-muted">
-    <div class="mx-auto flex w-full max-w-[90rem] flex-1 flex-col gap-2 p-2 sm:gap-3 sm:p-3">
+  <div :class="compact ? 'fixed inset-x-0 top-0 flex h-dvh flex-col overflow-hidden bg-muted' : 'flex min-h-dvh flex-col bg-muted'" :style="fitStyle">
+    <div :class="compact ? 'flex min-h-0 w-full flex-1 flex-col gap-1.5 p-1.5' : 'mx-auto flex w-full max-w-[90rem] flex-1 flex-col gap-2 p-2 sm:gap-3 sm:p-3'">
       <!-- one bar: clock and round, the word, the settings -->
-      <header class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-default bg-default px-2 py-1 sm:px-3 lg:grid-cols-[1fr_auto_1fr]">
+      <header class="grid shrink-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border border-default bg-default px-2 sm:px-3 lg:grid-cols-[1fr_auto_1fr]" :class="compact ? 'py-0.5' : 'py-1'">
         <div class="flex min-w-0 items-center gap-3">
           <button type="button" class="hidden shrink-0 lg:block" aria-label="Kamer verlaten" @click="leave"><AppLogo /></button>
           <template v-if="room">
-            <TurnClock :deadline="room.deadline" :total="total" :offset="offset" :ticking="room.phase === 'drawing'" @tick="sounds.play('tick')" />
-            <p class="text-sm leading-tight font-semibold text-highlighted sm:text-lg">
+            <TurnClock :deadline="room.deadline" :total="total" :offset="offset" :ticking="room.phase === 'drawing'" :small="compact" @tick="sounds.play('tick')" />
+            <p v-if="!compact" class="text-sm leading-tight font-semibold text-highlighted sm:text-lg">
               <template v-if="room.phase === 'lobby'">{{ room.isPublic ? 'Open kamer' : 'Privékamer' }}</template>
               <template v-else>Ronde {{ room.round }}<span class="hidden font-normal text-muted sm:inline"> van {{ room.settings.rounds }}</span></template>
             </p>
@@ -135,9 +171,20 @@ async function leave() {
         </div>
         <WordHint v-if="room" :room="room" :me="me" class="min-w-0" />
         <span v-else />
-        <div class="flex justify-end">
+        <div class="flex items-center justify-end">
+          <UButton
+            v-if="compact && room"
+            icon="i-lucide-users"
+            :label="room.phase === 'drawing' ? `${guessedCount}/${guessers}` : String(room.players.length)"
+            color="neutral"
+            :variant="playersOpen ? 'soft' : 'ghost'"
+            class="tabular-nums"
+            :aria-label="room.phase === 'drawing' ? `Spelers: ${guessedCount} van ${guessers} geraden` : `${room.players.length} spelers`"
+            :aria-expanded="playersOpen"
+            @click="playersOpen = !playersOpen"
+          />
           <UTooltip text="Instellingen">
-            <UButton icon="i-lucide-settings" color="neutral" variant="ghost" size="xl" square aria-label="Instellingen" @click="settingsOpen = true" />
+            <UButton icon="i-lucide-settings" color="neutral" variant="ghost" :size="compact ? 'lg' : 'xl'" square aria-label="Instellingen" @click="settingsOpen = true" />
           </UTooltip>
         </div>
       </header>
@@ -150,12 +197,16 @@ async function leave() {
         <p v-else class="flex items-center gap-2 text-muted"><UIcon name="i-lucide-loader-circle" class="size-5 animate-spin" /> Verbinden met de kamer…</p>
       </div>
 
-      <div v-else class="grid flex-1 grid-cols-2 content-start gap-2 sm:gap-3 lg:grid-cols-[15rem_minmax(0,1fr)_19rem] lg:content-stretch">
-        <aside class="order-2 max-h-80 overflow-y-auto lg:order-1 lg:max-h-none" aria-label="Spelers">
+      <div
+        v-else
+        ref="region"
+        :class="compact ? 'relative flex min-h-0 flex-1 flex-col gap-1.5' : 'grid flex-1 grid-cols-2 content-start gap-2 sm:gap-3 lg:grid-cols-[15rem_minmax(0,1fr)_19rem] lg:content-stretch'"
+      >
+        <aside :class="compact ? 'hidden' : 'order-2 max-h-80 overflow-y-auto lg:order-1 lg:max-h-none'" aria-label="Spelers">
           <PlayerList :room="room" :me="me" @votekick="(p) => send({ t: 'votekick', id: p.id })" @report="report" @kick="kick" @host="(p) => send({ t: 'host', id: p.id })" />
         </aside>
 
-        <main class="order-1 col-span-2 flex min-w-0 flex-col gap-2 sm:gap-3 lg:order-2 lg:col-span-1">
+        <main :class="compact ? 'contents' : 'order-1 col-span-2 flex min-w-0 flex-col gap-2 sm:gap-3 lg:order-2 lg:col-span-1'">
           <!-- lobby: its own panel; the board stays mounted (hidden) so it keeps its ops -->
           <div v-if="room.phase === 'lobby'" class="rounded-lg border border-default bg-default p-4 sm:p-6">
             <div class="mx-auto flex max-w-xl flex-col gap-4">
@@ -187,89 +238,113 @@ async function leave() {
             </div>
           </div>
 
-          <GameBoard v-show="room.phase !== 'lobby' || !!bye" :drawing="isDrawer && room.phase === 'drawing'" :tool="tool" :color="color" :size="size" @ready="ready" @ops="draw">
-            <!-- like or dislike the drawing -->
-            <div v-if="room.phase === 'drawing' && !isDrawer" class="absolute top-2 right-2 flex gap-1">
-              <UTooltip text="Leuke tekening">
-                <UButton icon="i-lucide-thumbs-up" color="success" :variant="myGuess?.reaction === 'like' ? 'solid' : 'soft'" size="lg" square aria-label="Leuke tekening" :disabled="!!myGuess?.reaction" class="disabled:opacity-100" @click="send({ t: 'react', kind: 'like' })" />
-              </UTooltip>
-              <UTooltip text="Niet leuk">
-                <UButton icon="i-lucide-thumbs-down" color="error" :variant="myGuess?.reaction === 'dislike' ? 'solid' : 'soft'" size="lg" square aria-label="Niet leuk" :disabled="!!myGuess?.reaction" class="disabled:opacity-100" @click="send({ t: 'react', kind: 'dislike' })" />
-              </UTooltip>
-            </div>
-
-            <!-- choosing a word -->
-            <div v-if="room.phase === 'choosing'" class="absolute inset-0 grid place-items-center bg-[#172b45]/85 p-4 text-white">
-              <div v-if="isDrawer && room.choices" class="flex flex-col items-center gap-4">
-                <h2 class="font-display text-3xl">Kies een woord</h2>
-                <div class="flex flex-wrap justify-center gap-2">
-                  <UButton v-for="(word, index) in room.choices" :key="word" :label="word" size="xl" color="secondary" class="text-lg" @click="send({ t: 'pick', index })" />
-                </div>
+          <!-- the same board in every layout (a new one would start blank); phones size it to fit -->
+          <div v-show="room.phase !== 'lobby' || !!bye" :class="compact ? 'mx-auto shrink-0' : ''" :style="compact ? { width: `${boardWidth}px` } : undefined">
+            <GameBoard :drawing="drawingNow" :tool="tool" :color="color" :size="size" @ready="ready" @ops="draw">
+              <!-- like or dislike the drawing -->
+              <div v-if="room.phase === 'drawing' && !isDrawer" class="absolute top-2 right-2 flex gap-1">
+                <UTooltip text="Leuke tekening">
+                  <UButton icon="i-lucide-thumbs-up" color="success" :variant="myGuess?.reaction === 'like' ? 'solid' : 'soft'" size="lg" square aria-label="Leuke tekening" :disabled="!!myGuess?.reaction" class="disabled:opacity-100" @click="send({ t: 'react', kind: 'like' })" />
+                </UTooltip>
+                <UTooltip text="Niet leuk">
+                  <UButton icon="i-lucide-thumbs-down" color="error" :variant="myGuess?.reaction === 'dislike' ? 'solid' : 'soft'" size="lg" square aria-label="Niet leuk" :disabled="!!myGuess?.reaction" class="disabled:opacity-100" @click="send({ t: 'react', kind: 'dislike' })" />
+                </UTooltip>
               </div>
-              <div v-else class="flex flex-col items-center gap-3">
-                <PlayerAvatar v-if="drawer" :avatar="drawer.avatar" :size="96" />
-                <p class="font-display text-2xl">{{ drawer?.name ?? 'Iemand' }} kiest een woord…</p>
-              </div>
-            </div>
 
-            <!-- end of a turn -->
-            <div v-else-if="room.phase === 'reveal' && room.reveal" class="absolute inset-0 grid place-items-center bg-[#172b45]/85 p-4 text-white">
-              <div class="flex w-full max-w-sm flex-col items-center gap-3">
-                <p class="text-sm opacity-80">{{ reasonText[room.reveal.reason] }}</p>
-                <p v-if="room.reveal.word" class="text-center">Het woord was <span class="block font-display text-4xl text-[var(--color-brand)]">{{ room.reveal.word }}</span></p>
-                <ul class="max-h-56 w-full overflow-y-auto">
-                  <li v-for="gain in room.reveal.gains" :key="gain.id" class="flex justify-between gap-4 border-b border-white/10 py-1 text-sm">
-                    <span class="truncate">{{ gain.name }}<span v-if="gain.id === room.reveal.drawerId" class="opacity-70"> (tekenaar)</span></span>
-                    <span class="font-bold tabular-nums" :class="gain.points ? 'text-[#7ee2a8]' : 'opacity-60'">+{{ gain.points }}</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <!-- end of the game -->
-            <div v-else-if="room.phase === 'results' && room.results" class="absolute inset-0 grid place-items-center overflow-y-auto bg-[#172b45]/90 p-4 text-white">
-              <div class="flex w-full max-w-md flex-col items-center gap-4">
-                <h2 class="font-display text-3xl">Einde van het spel</h2>
-                <div class="flex items-end justify-center gap-3">
-                  <div v-for="p in podium" :key="p.id" class="flex flex-col items-center gap-1">
-                    <UIcon v-if="p.rank === 1" name="i-lucide-crown" class="size-7 text-[#ffd23f]" />
-                    <PlayerAvatar :avatar="p.avatar" :size="p.rank === 1 ? 84 : 64" />
-                    <span class="max-w-24 truncate text-sm font-semibold">{{ p.name }}</span>
-                    <div class="grid w-20 place-items-center rounded-t-md bg-white/15 font-display text-2xl" :class="p.rank === 1 ? 'h-24' : p.rank === 2 ? 'h-16' : 'h-10'">{{ p.rank }}</div>
-                    <span class="text-xs tabular-nums opacity-80">{{ p.score }} punten</span>
+              <!-- choosing a word -->
+              <div v-if="room.phase === 'choosing'" class="absolute inset-0 flex flex-col overflow-y-auto bg-[#172b45]/85 p-3 text-white sm:p-4">
+                <div v-if="isDrawer && room.choices" class="m-auto flex flex-col items-center gap-3 sm:gap-4">
+                  <h2 class="font-display text-2xl sm:text-3xl">Kies een woord</h2>
+                  <div class="flex flex-wrap justify-center gap-2">
+                    <UButton v-for="(word, index) in room.choices" :key="word" :label="word" size="xl" color="secondary" class="text-lg" @click="send({ t: 'pick', index })" />
                   </div>
                 </div>
-                <ol v-if="room.results.length > 3" class="w-full text-sm">
-                  <li v-for="p in room.results.slice(3)" :key="p.id" class="flex justify-between border-b border-white/10 py-1">
-                    <span>#{{ p.rank }} {{ p.name }}</span><span class="tabular-nums">{{ p.score }}</span>
-                  </li>
-                </ol>
-                <p class="text-xs opacity-70">{{ room.isPublic ? 'Zo meteen begint een nieuw spel.' : 'Zo meteen terug naar de lobby.' }}</p>
-              </div>
-            </div>
-
-            <!-- connection -->
-            <div v-if="bye" class="absolute inset-0 grid place-items-center bg-default/95 p-4 text-center">
-              <div class="flex max-w-sm flex-col items-center gap-3">
-                <UIcon name="i-lucide-door-closed" class="size-10 text-muted" />
-                <p class="font-display text-2xl text-highlighted">{{ bye.message }}</p>
-                <div class="flex gap-2">
-                  <UButton to="/" label="Naar het begin" />
-                  <UButton v-if="bye.reason === 'replaced'" label="Hier verder spelen" color="neutral" variant="outline" @click="r.reconnect()" />
+                <div v-else class="m-auto flex flex-col items-center gap-3 text-center">
+                  <PlayerAvatar v-if="drawer" :avatar="drawer.avatar" :size="compact ? 64 : 96" />
+                  <p class="font-display text-xl sm:text-2xl">{{ drawer?.name ?? 'Iemand' }} kiest een woord…</p>
                 </div>
               </div>
-            </div>
-            <div v-else-if="status === 'reconnecting'" class="absolute inset-x-0 top-0 flex items-center justify-center gap-2 bg-warning/90 py-1.5 text-sm font-semibold text-white">
-              <UIcon name="i-lucide-wifi-off" class="size-4" /> Verbinding herstellen…
-            </div>
-          </GameBoard>
 
-          <DrawTools v-if="isDrawer && room.phase === 'drawing'" v-model:tool="tool" v-model:color="color" v-model:size="size" @undo="undo" @clear="clear" />
+              <!-- end of a turn -->
+              <div v-else-if="room.phase === 'reveal' && room.reveal" class="absolute inset-0 flex flex-col overflow-y-auto bg-[#172b45]/85 p-3 text-white sm:p-4">
+                <div class="m-auto flex w-full max-w-sm flex-col items-center gap-2 sm:gap-3">
+                  <p class="text-sm opacity-80">{{ reasonText[room.reveal.reason] }}</p>
+                  <p v-if="room.reveal.word" class="text-center">Het woord was <span class="block font-display text-3xl text-[var(--color-brand)] sm:text-4xl">{{ room.reveal.word }}</span></p>
+                  <ul class="w-full">
+                    <li v-for="gain in room.reveal.gains" :key="gain.id" class="flex justify-between gap-4 border-b border-white/10 py-1 text-sm">
+                      <span class="truncate">{{ gain.name }}<span v-if="gain.id === room.reveal.drawerId" class="opacity-70"> (tekenaar)</span></span>
+                      <span class="font-bold tabular-nums" :class="gain.points ? 'text-[#7ee2a8]' : 'opacity-60'">+{{ gain.points }}</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- end of the game -->
+              <div v-else-if="room.phase === 'results' && room.results" class="absolute inset-0 flex flex-col overflow-y-auto bg-[#172b45]/90 p-3 text-white sm:p-4">
+                <div class="m-auto flex w-full max-w-md flex-col items-center gap-3 sm:gap-4">
+                  <h2 class="font-display text-2xl sm:text-3xl">Einde van het spel</h2>
+                  <div class="flex items-end justify-center gap-3">
+                    <div v-for="p in podium" :key="p.id" class="flex flex-col items-center gap-1">
+                      <UIcon v-if="p.rank === 1" name="i-lucide-crown" class="size-7 text-[#ffd23f]" />
+                      <PlayerAvatar :avatar="p.avatar" :size="compact ? (p.rank === 1 ? 56 : 44) : p.rank === 1 ? 84 : 64" />
+                      <span class="max-w-24 truncate text-sm font-semibold">{{ p.name }}</span>
+                      <div class="grid w-16 place-items-center rounded-t-md bg-white/15 font-display text-2xl sm:w-20" :class="compact ? (p.rank === 1 ? 'h-14' : p.rank === 2 ? 'h-10' : 'h-7') : p.rank === 1 ? 'h-24' : p.rank === 2 ? 'h-16' : 'h-10'">{{ p.rank }}</div>
+                      <span class="text-xs tabular-nums opacity-80">{{ p.score }} punten</span>
+                    </div>
+                  </div>
+                  <ol v-if="room.results.length > 3" class="w-full text-sm">
+                    <li v-for="p in room.results.slice(3)" :key="p.id" class="flex justify-between border-b border-white/10 py-1">
+                      <span>#{{ p.rank }} {{ p.name }}</span><span class="tabular-nums">{{ p.score }}</span>
+                    </li>
+                  </ol>
+                  <p class="text-xs opacity-70">{{ room.isPublic ? 'Zo meteen begint een nieuw spel.' : 'Zo meteen terug naar de lobby.' }}</p>
+                </div>
+              </div>
+
+              <!-- connection -->
+              <div v-if="bye" class="absolute inset-0 grid place-items-center bg-default/95 p-4 text-center">
+                <div class="flex max-w-sm flex-col items-center gap-3">
+                  <UIcon name="i-lucide-door-closed" class="size-10 text-muted" />
+                  <p class="font-display text-2xl text-highlighted">{{ bye.message }}</p>
+                  <div class="flex gap-2">
+                    <UButton to="/" label="Naar het begin" />
+                    <UButton v-if="bye.reason === 'replaced'" label="Hier verder spelen" color="neutral" variant="outline" @click="r.reconnect()" />
+                  </div>
+                </div>
+              </div>
+              <div v-else-if="status === 'reconnecting'" class="absolute inset-x-0 top-0 flex items-center justify-center gap-2 bg-warning/90 py-1.5 text-sm font-semibold text-white">
+                <UIcon name="i-lucide-wifi-off" class="size-4" /> Verbinding herstellen…
+              </div>
+              <!-- phones with the keyboard open: the newest chat lines -->
+              <ChatBubbles v-if="compact" v-show="bubbles && room.phase === 'drawing'" :lines="chat" />
+            </GameBoard>
+          </div>
+
+          <DrawTools v-if="drawingNow" v-model:tool="tool" v-model:color="color" v-model:size="size" :compact="compact" :class="compact ? 'shrink-0' : ''" @undo="undo" @clear="clear" />
         </main>
 
-        <aside class="relative order-3 h-80 min-h-0 lg:h-auto" aria-label="Chat">
-          <ChatBox :lines="chat" :room="room" :me="me" :disabled="status !== 'open' || !!bye" class="h-full lg:absolute lg:inset-0" @send="(text) => send({ t: 'chat', text })" />
+        <aside :class="compact ? 'flex min-h-0 flex-1 flex-col' : 'relative order-3 h-80 min-h-0 lg:h-auto'" aria-label="Chat">
+          <ChatBox
+            :lines="chat"
+            :room="room"
+            :me="me"
+            :disabled="status !== 'open' || !!bye"
+            :hide-list="bubbles"
+            :class="compact ? 'min-h-0 flex-1' : 'h-full lg:absolute lg:inset-0'"
+            @send="(text) => send({ t: 'chat', text })"
+          />
         </aside>
+
+        <!-- phones: the players, over the board and the chat -->
+        <div v-if="compact && playersOpen" class="absolute inset-0 z-20 flex flex-col gap-1 bg-black/40 p-1" @click.self="playersOpen = false">
+          <div class="flex items-center justify-between rounded-lg border border-default bg-default px-3 py-1">
+            <p class="text-sm font-semibold text-highlighted">Ronde {{ room.round }}<span class="font-normal text-muted"> van {{ room.settings.rounds }} · {{ room.players.length }} spelers</span></p>
+            <UButton icon="i-lucide-x" color="neutral" variant="ghost" size="sm" square aria-label="Spelers sluiten" @click="playersOpen = false" />
+          </div>
+          <div class="min-h-0 overflow-y-auto rounded-lg">
+            <PlayerList :room="room" :me="me" @votekick="(p) => send({ t: 'votekick', id: p.id })" @report="report" @kick="kick" @host="(p) => send({ t: 'host', id: p.id })" />
+          </div>
+        </div>
       </div>
     </div>
 

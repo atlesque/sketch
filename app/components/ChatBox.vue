@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Guesses and chat. Correct guesses never show (only "X heeft het woord geraden!"); messages from the drawer and from
-// players who guessed show in green and only reach the others who know the word.
+// players who guessed show in green and only reach the others who know the word. `hideList` leaves only the input
+// (phones with the keyboard open, where the newest lines float over the board instead).
 import { LIMITS, type ChatLine, type RoomView } from '#shared/protocol';
 
-const props = defineProps<{ lines: ChatLine[]; room: RoomView | null; me: string; disabled?: boolean; spectator?: boolean }>();
+const props = defineProps<{ lines: ChatLine[]; room: RoomView | null; me: string; disabled?: boolean; spectator?: boolean; hideList?: boolean }>();
 const emit = defineEmits<{ send: [string] }>();
 
 const text = ref('');
@@ -49,13 +50,22 @@ watch(
   },
 );
 onMounted(() => list.value && (list.value.scrollTop = list.value.scrollHeight));
+// back from hidden: show the newest lines
+watch(
+  () => props.hideList,
+  async (hidden) => {
+    if (hidden) return;
+    await nextTick();
+    if (list.value) list.value.scrollTop = list.value.scrollHeight;
+  },
+);
 
 defineExpose({ focus: () => input.value?.inputRef?.focus() });
 </script>
 
 <template>
   <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-default bg-default">
-    <ul ref="list" class="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-sm" aria-live="polite" aria-label="Chat">
+    <ul v-show="!hideList" ref="list" class="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-sm" aria-live="polite" aria-label="Chat">
       <li
         v-for="line in lines"
         :key="line.id"
@@ -70,8 +80,8 @@ defineExpose({ focus: () => input.value?.inputRef?.focus() });
         <template v-else>{{ line.text }}</template>
       </li>
     </ul>
-    <form v-if="!spectator" class="border-t border-default p-2" @submit.prevent="submit">
-      <UInput ref="input" v-model="text" :placeholder="placeholder" :maxlength="LIMITS.chat" :disabled="disabled" autocomplete="off" class="w-full" :ui="{ base: knows ? 'ring-success/60' : '' }" aria-label="Bericht of gok">
+    <form v-if="!spectator" class="p-1.5 sm:p-2" :class="hideList ? '' : 'border-t border-default'" @submit.prevent="submit">
+      <UInput ref="input" v-model="text" :placeholder="placeholder" :maxlength="LIMITS.chat" :disabled="disabled" autocomplete="off" class="w-full" :ui="{ base: ['text-base sm:text-sm', knows ? 'ring-success/60' : ''] }" enterkeyhint="send" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Bericht of gok">
         <template v-if="text.length > LIMITS.chat - 20" #trailing>
           <span class="text-xs text-dimmed tabular-nums">{{ text.length }}/{{ LIMITS.chat }}</span>
         </template>

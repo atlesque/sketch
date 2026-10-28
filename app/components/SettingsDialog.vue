@@ -35,23 +35,24 @@ async function copyInvite() {
   }
 }
 
-// The shared consent banner (consent.js, if it loaded) opens once this dialog has closed, so the dialog's focus trap
-// doesn't keep the focus.
+// The shared consent banner (consent.js, if it loaded) opens once this dialog has closed and would hand the focus back
+// to the gear, so the focus goes to the banner instead.
 const consent = () => (window as { AtlesqueConsent?: { open(): void } }).AtlesqueConsent;
 let consentNext = false;
 function openConsent() {
   consentNext = true;
   open.value = false;
 }
-function afterLeave() {
+function closeAutoFocus(event: Event) {
   if (!consentNext) return;
   consentNext = false;
+  event.preventDefault();
   consent()?.open();
 }
 </script>
 
 <template>
-  <UModal v-model:open="open" title="Instellingen" :ui="{ body: 'flex flex-col gap-6' }" @after:leave="afterLeave">
+  <UModal v-model:open="open" title="Instellingen" :ui="{ body: 'flex flex-col gap-6' }" :content="{ onCloseAutoFocus: closeAutoFocus }">
     <template #body>
       <section class="flex flex-col gap-2">
         <h3 class="flex items-center gap-2 font-semibold text-highlighted">

@@ -47,7 +47,7 @@ function join() {
         Je bent uitgenodigd in kamer <span class="font-mono font-semibold text-highlighted">{{ code }}</span>
         <template v-if="info?.exists"><br><span class="text-sm text-muted">{{ info.players }} van {{ info.maxPlayers }} spelers</span></template>
       </p>
-      <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Je naam" size="xl" class="w-full" aria-label="Je naam" autofocus @keydown.enter="join" />
+      <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Je naam" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" size="xl" class="w-full" aria-label="Je naam" autofocus @keydown.enter="join" />
       <AvatarEditor v-model="profile.avatar" />
       <UButton :label="full ? 'Deze kamer is vol' : 'Meedoen!'" size="xl" block class="py-3 text-xl font-bold" :disabled="!profile.name.trim() || full || !info" @click="join" />
       <AccountLine />

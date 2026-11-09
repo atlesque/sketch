@@ -55,7 +55,7 @@ const modes = [
       :hint="`${parsed.length} woorden`"
       :help="`Gescheiden door komma's of een nieuwe regel. Vanaf ${LIMITS.customOnlyMin} woorden kun je alleen deze gebruiken; anders komen ze tussen de ingebouwde woorden.`"
     >
-      <UTextarea v-model="words" :rows="3" :disabled="!editable" placeholder="sprint, retro, backlog, stand-up, …" class="w-full" autoresize :maxrows="8" />
+      <UTextarea v-model="words" :rows="3" :disabled="!editable" placeholder="sprint, retro, backlog, stand-up, …" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="off" class="w-full" autoresize :maxrows="8" />
     </UFormField>
     <UCheckbox
       class="sm:col-span-2"

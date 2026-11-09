@@ -50,7 +50,7 @@ const crowd: Avatar[] = [
       </div>
 
       <UCard class="mt-6 w-full max-w-md" :ui="{ body: 'flex flex-col gap-4' }">
-        <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Je naam" size="xl" class="w-full" aria-label="Je naam" autofocus @keydown.enter="start('play')" />
+        <UInput v-model="profile.name" :maxlength="LIMITS.name" placeholder="Je naam" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="words" size="xl" class="w-full" aria-label="Je naam" autofocus @keydown.enter="start('play')" />
         <AvatarEditor v-model="profile.avatar" />
         <UButton label="Spelen!" size="xl" block class="py-3 text-xl font-bold" :loading="busy === 'play'" :disabled="!!busy" @click="start('play')" />
         <UButton label="Privékamer maken" icon="i-lucide-lock" size="lg" color="neutral" variant="subtle" block :loading="busy === 'private'" :disabled="!!busy" @click="start('private')" />

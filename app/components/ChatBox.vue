@@ -37,26 +37,39 @@ function submit() {
   if (!value) return;
   emit('send', value);
   text.value = '';
+  stick.value = true;
+  toBottom();
 }
 
+// Keep the newest line in view unless the player scrolled up to read back. Watch the last line's id, not the count:
+// the chat is capped at 250 lines, so on a long chat the count stops changing while new lines keep coming.
+const stick = ref(true);
+function toBottom() {
+  if (list.value) list.value.scrollTop = list.value.scrollHeight;
+}
+function onScroll() {
+  const el = list.value;
+  if (el) stick.value = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+}
 watch(
-  () => props.lines.length,
-  async () => {
-    const el = list.value;
-    if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    await nextTick();
-    if (atBottom) el.scrollTop = el.scrollHeight;
-  },
+  () => props.lines.at(-1)?.id,
+  () => stick.value && toBottom(),
+  { flush: 'post' },
 );
-onMounted(() => list.value && (list.value.scrollTop = list.value.scrollHeight));
-// back from hidden: show the newest lines
+// the list changing size (keyboard, layout, back from hidden) shouldn't leave the newest lines out of view
+let resize: ResizeObserver | undefined;
+onMounted(() => {
+  toBottom();
+  if (list.value) (resize = new ResizeObserver(() => stick.value && toBottom())).observe(list.value);
+});
+onBeforeUnmount(() => resize?.disconnect());
 watch(
   () => props.hideList,
   async (hidden) => {
     if (hidden) return;
     await nextTick();
-    if (list.value) list.value.scrollTop = list.value.scrollHeight;
+    stick.value = true;
+    toBottom();
   },
 );
 
@@ -65,7 +78,7 @@ defineExpose({ focus: () => input.value?.inputRef?.focus() });
 
 <template>
   <div class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-default bg-default">
-    <ul v-show="!hideList" ref="list" class="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-sm" aria-live="polite" aria-label="Chat">
+    <ul v-show="!hideList" ref="list" class="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2 text-sm" aria-live="polite" aria-label="Chat" @scroll.passive="onScroll">
       <li
         v-for="line in lines"
         :key="line.id"

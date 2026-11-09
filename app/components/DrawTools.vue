@@ -49,7 +49,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 <template>
   <div v-if="compact" class="flex items-center gap-1 rounded-lg border border-default bg-default p-1">
     <UPopover v-model:open="colorsOpen" :content="{ side: 'top', align: 'start' }">
-      <button type="button" class="size-9 shrink-0 rounded-md border border-black/15" :style="{ background: PALETTE[color] }" aria-label="Kleur kiezen" />
+      <button type="button" class="size-9 shrink-0 rounded-md border border-black/15 dark:border-white/40" :style="{ background: PALETTE[color] }" aria-label="Kleur kiezen" />
       <template #content>
         <div class="grid grid-cols-8 gap-1 p-2" role="radiogroup" aria-label="Kleur">
           <button
@@ -59,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
             role="radio"
             :aria-checked="color === index"
             :aria-label="`Kleur ${index + 1}`"
-            class="size-8 rounded-sm border border-black/15"
+            class="size-8 rounded-sm border border-black/15 dark:border-white/40"
             :class="color === index ? 'ring-2 ring-primary ring-offset-1 ring-offset-(--ui-bg)' : ''"
             :style="{ background: hex }"
             @click="pickColor(index)"
@@ -104,7 +104,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
         role="radio"
         :aria-checked="color === index"
         :aria-label="`Kleur ${index + 1}`"
-        class="size-6 rounded-sm border border-black/15 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-primary"
+        class="size-6 rounded-sm border border-black/15 dark:border-white/40 transition-transform hover:scale-110 focus-visible:outline-2 focus-visible:outline-primary"
         :class="color === index ? 'ring-2 ring-primary ring-offset-1 ring-offset-(--ui-bg)' : ''"
         :style="{ background: hex }"
         @click="pickColor(index)"

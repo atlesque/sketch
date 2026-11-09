@@ -171,6 +171,11 @@
   html { background: var(--app-bg); color-scheme: light; }
   html.dark { color-scheme: dark; }
   body { font-family: var(--font-sans); background: var(--app-bg); color: var(--ui-text); -webkit-font-smoothing: antialiased; }
+  /* The game is an app, not a page: no text selection or long-press callout on the UI and chat, and no grey/blue tap
+     flash on mobile. Fields stay selectable so typing, editing and pasting work; the admin opts back in with select-text. */
+  html { -webkit-tap-highlight-color: transparent; }
+  body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  input, textarea, [contenteditable]:not([contenteditable="false"]) { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   ::selection { background: color-mix(in srgb, var(--color-brand) 70%, transparent); color: #142338; }
 }
 

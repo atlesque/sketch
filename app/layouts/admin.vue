@@ -25,7 +25,7 @@ useHead({ htmlAttrs: { lang: 'en' }, titleTemplate: (title) => (title ? `${title
 </script>
 
 <template>
-  <UDashboardGroup storage="local" storage-key="sketch-admin" unit="px">
+  <UDashboardGroup class="select-text" storage="local" storage-key="sketch-admin" unit="px">
     <UDashboardSidebar collapsible :resizable="false" :default-size="232" :collapsed-size="68" :ui="{ root: 'bg-default/60', header: 'h-16', footer: 'flex-col items-stretch gap-2 border-t border-default py-3' }">
       <template #header="{ collapsed }">
         <NuxtLink to="/admin" class="min-w-0" aria-label="Sketch admin home"><AppLogo v-if="!collapsed" admin /><img v-else src="/favicon.svg" width="28" height="28" alt=""></NuxtLink>

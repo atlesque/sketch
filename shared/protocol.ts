@@ -61,6 +61,10 @@ export const LIMITS = {
   customWordLength: 30,
   /** At least this many custom words before a room may use only those. */
   customOnlyMin: 10,
+  /** The admin's global word list (/admin/words): at most this many extra words. */
+  globalWords: 5000,
+  /** At least this many extra words before the game may use only those. */
+  globalOnlyMin: 50,
   name: 20,
   chat: 100,
 } as const;

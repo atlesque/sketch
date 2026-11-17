@@ -49,6 +49,7 @@ import {
 import { WORDS_NL } from '../shared/words-nl.ts';
 import { findBan, insertEvents, type AuditEvent } from './log.ts';
 import { playUser, type PlayUser } from './play.ts';
+import { loadPool } from './words.ts';
 
 interface Player {
   id: string;
@@ -146,6 +147,8 @@ const GRACE_LOBBY = 15_000;
 const GRACE_GAME = 45_000;
 const EMPTY_PUBLIC = 60_000;
 const EMPTY_PRIVATE = 10 * 60_000;
+/** How long a room keeps the admin's word list before reading it again (/admin/words). */
+const POOL_TTL = 60_000;
 
 const randomId = (bytes = 6) => [...crypto.getRandomValues(new Uint8Array(bytes))].map((b) => b.toString(36).padStart(2, '0')).join('').slice(0, bytes * 2);
 const randomSecret = () => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(18)))).replace(/[+/=]/g, (c) => ({ '+': '-', '/': '_', '=': '' })[c]!);
@@ -157,6 +160,9 @@ export class Room extends DurableObject<Env> {
   private pending: Promise<unknown>[] = [];
   private rates = new Map<string, number[]>();
   private lastRow = '';
+  /** The global word list (built-in words and the admin's changes), read from D1 at most once a minute. */
+  private pool: string[] | null = null;
+  private poolAt = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -173,6 +179,7 @@ export class Room extends DurableObject<Env> {
   /** Sets up a new room. Answers false when the code is already taken. */
   async create(code: string, isPublic: boolean, settings?: Partial<Settings>): Promise<boolean> {
     if (this.s) return false;
+    await this.refreshPool();
     const now = Date.now();
     this.s = {
       code,
@@ -348,7 +355,10 @@ export class Room extends DurableObject<Env> {
     if (att.admin) return; // spectators only watch; admin actions go through the HTTP API
     if (!this.s) return this.bye(ws, 'gone', 'Deze kamer bestaat niet (meer).');
     if (!att.pid) {
-      if (msg.t === 'hello') await this.hello(ws, att, msg);
+      if (msg.t === 'hello') {
+        await this.refreshPool();
+        await this.hello(ws, att, msg);
+      }
       await this.drain();
       return;
     }
@@ -375,6 +385,8 @@ export class Room extends DurableObject<Env> {
   }
 
   async alarm() {
+    if (!this.s) return;
+    await this.refreshPool();
     const s = this.s;
     if (!s) return;
     const now = Date.now();
@@ -724,7 +736,7 @@ export class Room extends DurableObject<Env> {
     this.addChat({ kind: 'info', text: `${drawer.name} kiest een woord.` }, 'all');
   }
 
-  /** The drawer's choices: custom words get half the slots when the room has them, unless the room uses only those. */
+  /** The drawer's choices from the global word list: a room's custom words get half the slots, or all with "only custom". */
   private pickChoices(): string[] {
     const s = this.s!;
     const used = new Set(s.used);
@@ -735,7 +747,14 @@ export class Room extends DurableObject<Env> {
     if (custom.length) for (let i = 0; i < n; i++) if (Math.random() < 0.5) fromCustom++;
     const picked = pickWords(custom, used, Math.min(fromCustom, custom.length));
     for (const word of picked) used.add(normalize(word));
-    return [...picked, ...pickWords(WORDS_NL, used, n - picked.length)].sort(() => Math.random() - 0.5);
+    return [...picked, ...pickWords(this.pool ?? WORDS_NL, used, n - picked.length)].sort(() => Math.random() - 0.5);
+  }
+
+  /** Reads the global word list again when it is older than a minute. */
+  private async refreshPool() {
+    if (this.pool && Date.now() - this.poolAt < POOL_TTL) return;
+    this.pool = await loadPool(this.env.DB);
+    this.poolAt = Date.now();
   }
 
   private beginDrawing(word: string) {

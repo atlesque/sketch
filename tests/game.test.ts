@@ -18,6 +18,7 @@ import {
   rank,
   undoOps,
   validOps,
+  wordPool,
 } from '../shared/game.ts';
 import type { Op } from '../shared/protocol.ts';
 import { WORDS_NL } from '../shared/words-nl.ts';
@@ -113,4 +114,16 @@ test('the built-in list is large and clean', () => {
   assert.ok(WORDS_NL.length >= 1500);
   assert.equal(new Set(WORDS_NL.map(normalize)).size, WORDS_NL.length);
   assert.ok(WORDS_NL.every((w) => w.length <= 20 && w === w.trim()));
+});
+
+test('the global word pool adds, removes and can use only the added words', () => {
+  const builtin = ['appel', 'peer', 'Café'];
+  assert.deepEqual(wordPool(builtin, [], []), builtin);
+  assert.deepEqual(wordPool(builtin, ['sprint', 'APPEL'], ['cafe']).sort(), ['APPEL', 'peer', 'sprint']);
+  // "only the added words" needs enough of them, and the pool never ends up empty
+  assert.deepEqual(wordPool(builtin, ['sprint'], [], true).sort(), ['Café', 'appel', 'peer', 'sprint']);
+  const many = Array.from({ length: 50 }, (_, i) => `woord ${i}`);
+  assert.equal(wordPool(builtin, many, [], true).length, 50);
+  assert.deepEqual(wordPool(builtin, [], builtin), builtin);
+  assert.equal(parseWords('a\nb\nc', 2).length, 2);
 });

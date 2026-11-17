@@ -3,8 +3,12 @@
 // reports, bans, players) from D1 and R2. Every change an admin makes is written to the audit log.
 
 import { CODE, fail, forwardSocket, json, readJson, roomStub } from './http.ts';
+import { normalize, parseWords, wordPool } from '../shared/game.ts';
+import { LIMITS } from '../shared/protocol.ts';
+import { WORDS_NL } from '../shared/words-nl.ts';
 import { insertEvents } from './log.ts';
 import type { AdminAction } from './room.ts';
+import { loadWordList, saveWordList } from './words.ts';
 
 const PAGE = 100;
 const int = (value: string | null, fallback: number) => {
@@ -66,6 +70,74 @@ export async function adminApi(request: Request, env: Env, url: URL, email: stri
       const { results: games } = await env.DB.prepare('SELECT id, started_at, ended_at, end_reason, winner_name, turns FROM games WHERE room_code = ? ORDER BY started_at DESC LIMIT 20').bind(code).all();
       return json({ snapshot, row, games });
     }
+  }
+
+  // Room history: every room opened in the period, open or closed, with its games and visitors and why it closed.
+  if (path === '/room-history' && method === 'GET') {
+    const days = Math.min(180, Math.max(1, int(q.get('days'), 7)));
+    const since = Date.now() - days * 86_400_000;
+    const status = q.get('status');
+    const where = ['(created_at > ? OR closed_at > ? OR closed_at IS NULL)'];
+    if (status === 'active') where.push('closed_at IS NULL');
+    if (status === 'closed') where.push('closed_at IS NOT NULL');
+    const { results } = await env.DB.prepare(
+      `SELECT r.*,
+        (SELECT COUNT(*) FROM games g WHERE g.room_code = r.code) AS games,
+        (SELECT COUNT(DISTINCT device) FROM events e WHERE e.room_code = r.code AND e.type = 'player.join') AS visitors,
+        (SELECT json_extract(data, '$.reason') FROM events e WHERE e.room_code = r.code AND e.type = 'room.close' ORDER BY id DESC LIMIT 1) AS close_reason,
+        (SELECT actor_name FROM events e WHERE e.room_code = r.code AND e.type = 'admin.close' ORDER BY id DESC LIMIT 1) AS closed_by
+       FROM rooms r WHERE ${where.join(' AND ')} ORDER BY COALESCE(closed_at, updated_at) DESC LIMIT 500`,
+    )
+      .bind(since, since)
+      .all();
+    return json({ rooms: results, now: Date.now() });
+  }
+
+  // ---------- the global word list ----------
+
+  if (path === '/words' && method === 'GET') {
+    const list = await loadWordList(env.DB);
+    return json({
+      ...list,
+      builtin: WORDS_NL.length,
+      pool: wordPool(WORDS_NL, list.extra, list.removed, list.onlyExtra).length,
+      onlyExtraMin: LIMITS.globalOnlyMin,
+      max: LIMITS.globalWords,
+    });
+  }
+
+  if (path === '/words' && method === 'PUT') {
+    const body = await readJson<{ extra?: unknown; removed?: unknown; onlyExtra?: unknown }>(request);
+    const extra = parseWords(body.extra, LIMITS.globalWords);
+    // only built-in words can be removed; anything else is reported back
+    const builtin = new Map(WORDS_NL.map((w) => [normalize(w), w]));
+    const asked = parseWords(body.removed, WORDS_NL.length);
+    const removed = asked.filter((w) => builtin.has(normalize(w))).map((w) => builtin.get(normalize(w))!);
+    const unknown = asked.filter((w) => !builtin.has(normalize(w)));
+    const onlyExtra = body.onlyExtra === true && extra.length >= LIMITS.globalOnlyMin;
+    const before = await loadWordList(env.DB);
+    const keys = (list: string[]) => new Set(list.map(normalize));
+    const diff = (from: string[], to: string[]) => {
+      const a = keys(from);
+      const b = keys(to);
+      return { added: to.filter((w) => !a.has(normalize(w))), dropped: from.filter((w) => !b.has(normalize(w))) };
+    };
+    const extraDiff = diff(before.extra, extra);
+    const removedDiff = diff(before.removed, removed);
+    await saveWordList(env.DB, { extra, removed, onlyExtra }, email);
+    await audit('admin.words', {
+      text: [
+        extraDiff.added.length ? `added: ${extraDiff.added.join(', ')}` : '',
+        extraDiff.dropped.length ? `no longer added: ${extraDiff.dropped.join(', ')}` : '',
+        removedDiff.added.length ? `removed built-in: ${removedDiff.added.join(', ')}` : '',
+        removedDiff.dropped.length ? `restored built-in: ${removedDiff.dropped.join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
+        .slice(0, 4000) || null,
+      data: { extra: extra.length, removed: removed.length, onlyExtra, changedOnlyExtra: onlyExtra !== before.onlyExtra },
+    });
+    return json({ ok: true, unknown, pool: wordPool(WORDS_NL, extra, removed, onlyExtra).length });
   }
 
   // ---------- games, turns, drawings ----------

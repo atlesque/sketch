@@ -10,7 +10,7 @@ export const ACTIONS: { action: Action; label: string }[] = [
   { action: 'brush', label: 'Penseel' },
   { action: 'eraser', label: 'Gum' },
   { action: 'fill', label: 'Emmer' },
-  { action: 'undo', label: 'Ongedaan maken' },
+  { action: 'undo', label: 'Undo' },
 ];
 
 function load(): Keys {

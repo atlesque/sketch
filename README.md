@@ -7,7 +7,7 @@ Draw and guess with your team, for the Scrum ceremonies. One player draws a word
 - The home page asks for a name and an avatar, then two buttons. **Spelen!** (play) drops you in an open room with whoever is playing; it starts by itself once two people are in. **Privékamer maken** (private room) makes a room you set up yourself (players, rounds, drawing time, word choices, hints, a hidden-word mode, custom words or only custom words) and share with a link (`/r/<code>`). There's no code field: you join by the link.
 - The game screen: one bar on top (the clock, the round, the word or its blanks, a gear for the settings), the players on the left, the board in the middle with the drawer's tools under it, the chat on the right. On a phone, a game fills exactly the visible screen, with nothing to scroll: the bar, the board as big as fits, the drawer's tools in one row (color and size open small panels), the chat and the guess field. When the keyboard opens, the board shrinks to stay above it and the newest chat lines float over the board for a few seconds. The players open from a button in the bar, which shows how many guessed.
 - The settings (the gear): volume, the drawing keys, light or dark, the cookie settings, the invite link, and leaving the room.
-- The game is in Dutch, with 1,900 everyday Dutch words built in (`shared/words-nl.ts`). Custom words get about half the choices when a room has them.
+- The game is in Dutch, with 1,900 everyday Dutch words built in (`shared/words-nl.ts`), which the admin can add to or trim (**Word list**). Custom words get about half the choices when a room has them.
 - Turns: the drawer picks a word (15 s), draws it (brush, eraser, fill, five sizes, 24 colors, undo, clear; keys B / E / F / Z unless changed in the settings, and Ctrl+Z always undoes), and the others guess. Letters are revealed as hints over the turn, and at least half the word always stays hidden. Correct guesses are never shown; "nearly right" (one typo, two for long words) is told privately. Players who guessed and the drawer chat among themselves in green. The drawer can't type the word.
 - Like or dislike a drawing (the thumbs on the board), and click a player for vote to kick (a majority of the others) or report to the admin. In a private room, the host can kick and hand over the host role.
 - Guests play with just a name and an avatar. **Inloggen of registreren** (sign in or register) uses an Atlesque account ([Atlesque Play](https://github.com/atlesque/mbp-games), play.atlesque.dev; the first sign-in creates the account): signed-in players get a badge in rooms and their totals kept (also shown on the Atlesque Play hub).
@@ -20,14 +20,16 @@ Behind Cloudflare Access (only the emails in `ALLOWED_EMAILS`); the admin API ch
 - **Live rooms**: every open room, and per room a live view: the board as it is being drawn, the word, all chat (including correct guesses and blocked spoilers), the players with their account, device and IP, and controls: start, skip turn, end game, close room, message everyone, mute, make host, kick, ban (account, browser, IP).
 - **Games**: every game with its ranking and turns (drawer, word, who guessed, likes, points) and each turn's drawing, replayable and downloadable as PNG.
 - **Audit log**: everything that happens in the rooms (joins, chat and guesses, turns, votes, kicks, reports, settings) and every admin action, filterable and exportable as CSV. Kept for 180 days.
-- **Reports**, **Bans** (lift, add by hand, with an expiry) and **Players** (accounts with totals, and every browser that joined lately).
+- **Room history**: every room opened, closed or still open in the last day, week, month or 180 days (when, for how long, games, visitors, why it closed), with a timeline of openings and closings.
+- **Word list**: the global list every room draws from. Add words to the 1,900 built-in ones, take built-in words out, or play with only the added words (at least 50). Saved in D1 (`config`); rooms read it again at most once a minute, and every change is in the audit log (`admin.words`). A private room's own custom words still come on top.
+- **Reports**, **Bans** (lift, add by hand, with an expiry) and **Players** (accounts with their totals, win rate and points per game, sortable; and every browser that joined lately).
 
 ## How it works
 
 - `worker/index.ts`: the Worker. Pages come from static assets (Nuxt, `ssr: false`); only `/api/*` runs the Worker.
 - `worker/room.ts`: one Durable Object per room (named by its code). It is the authority: words, the clock, hints, guesses, scores. WebSockets use the hibernation API; the state is saved after every change and the drawing's ops go to the object's SQLite, so a room carries on after hibernating. Alarms drive the clock.
 - `shared/protocol.ts` is the wire format; `shared/game.ts` the rules (tested in `tests/game.test.ts`).
-- D1 (`migrations/`): rooms (matchmaking and the admin's live list), games, turns, the audit log (`events`), bans, reports, account totals. R2 (`sketch-drawings`): each finished turn's drawing as its ops.
+- D1 (`migrations/`): rooms (matchmaking and the admin's live list), games, turns, the audit log (`events`), bans, reports, account totals, admin settings (`config`: the global word list). R2 (`sketch-drawings`): each finished turn's drawing as its ops.
 - Atlesque Play checks sign-in tokens over a service binding (`PLAY` → `mbp-games`); see `worker/play.ts` and `app/composables/useAccount.ts`.
 - A nightly cron prunes the audit log and closes room rows a deploy left open.
 

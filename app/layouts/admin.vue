@@ -14,11 +14,13 @@ onMounted(async () => {
 
 const items: NavigationMenuItem[] = [
   { label: 'Live rooms', icon: 'i-lucide-radio', to: '/admin', exact: true },
+  { label: 'Room history', icon: 'i-lucide-history', to: '/admin/rooms' },
   { label: 'Games', icon: 'i-lucide-gamepad-2', to: '/admin/games' },
   { label: 'Audit log', icon: 'i-lucide-scroll-text', to: '/admin/audit' },
   { label: 'Reports', icon: 'i-lucide-flag', to: '/admin/reports' },
   { label: 'Bans', icon: 'i-lucide-ban', to: '/admin/bans' },
   { label: 'Players', icon: 'i-lucide-users', to: '/admin/players' },
+  { label: 'Word list', icon: 'i-lucide-book-a', to: '/admin/words' },
 ];
 const reload = () => window.location.reload();
 useHead({ htmlAttrs: { lang: 'en' }, titleTemplate: (title) => (title ? `${title} · Sketch admin` : 'Sketch admin') });

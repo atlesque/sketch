@@ -117,7 +117,7 @@ export function rank<T extends { score: number }>(players: T[]): (T & { rank: nu
 }
 
 /** Custom words from a textarea: one per line or comma separated, trimmed, no duplicates. */
-export function parseWords(input: unknown): string[] {
+export function parseWords(input: unknown, max: number = LIMITS.customWords): string[] {
   const list = Array.isArray(input) ? input.map(String) : String(input ?? '').split(/[\n,;]/);
   const seen = new Set<string>();
   const words: string[] = [];
@@ -127,7 +127,7 @@ export function parseWords(input: unknown): string[] {
     if (!key || seen.has(key)) continue;
     seen.add(key);
     words.push(word);
-    if (words.length >= LIMITS.customWords) break;
+    if (words.length >= max) break;
   }
   return words;
 }
@@ -205,4 +205,16 @@ export function pickWords(pool: string[], used: Set<string>, n: number, random =
     out.push(word);
   }
   return out;
+}
+
+/**
+ * The words the game draws from: the built-in list without the removed words, plus the admin's extra words
+ * (or only the extra words, when there are enough of them). Never empty: it falls back to the built-in list.
+ */
+export function wordPool(builtin: string[], extra: string[], removed: string[], onlyExtra = false): string[] {
+  const out = new Map<string, string>();
+  const gone = new Set(removed.map(normalize));
+  if (!(onlyExtra && extra.length >= LIMITS.globalOnlyMin)) for (const word of builtin) if (!gone.has(normalize(word))) out.set(normalize(word), word);
+  for (const word of extra) if (normalize(word)) out.set(normalize(word), word);
+  return out.size ? [...out.values()] : builtin;
 }

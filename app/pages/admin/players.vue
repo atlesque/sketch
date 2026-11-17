@@ -43,6 +43,44 @@ async function load() {
 watch(days, load);
 onMounted(load);
 
+// The accounts table sorts by any column (click a header); win rate and points per game are worked out here.
+type SortKey = 'email' | 'name' | 'games' | 'wins' | 'winRate' | 'points' | 'perGame' | 'guesses' | 'drawings' | 'first_played' | 'last_played';
+const sort = ref<{ key: SortKey; desc: boolean }>({ key: 'last_played', desc: true });
+const rate = (a: AccountRow) => (a.games ? a.wins / a.games : 0);
+const perGame = (a: AccountRow) => (a.games ? a.points / a.games : 0);
+const value = (a: AccountRow, key: SortKey) => (key === 'winRate' ? rate(a) : key === 'perGame' ? perGame(a) : (a[key] ?? ''));
+const sortedAccounts = computed(() =>
+  accounts.value
+    .filter((a) => match(a.email, a.name))
+    .sort((a, b) => {
+      const x = value(a, sort.value.key);
+      const y = value(b, sort.value.key);
+      const order = typeof x === 'string' || typeof y === 'string' ? String(x).localeCompare(String(y)) : x - y;
+      return sort.value.desc ? -order : order;
+    }),
+);
+function sortBy(key: SortKey) {
+  sort.value = sort.value.key === key ? { key, desc: !sort.value.desc } : { key, desc: key !== 'email' && key !== 'name' };
+}
+const columns: { key: SortKey; label: string }[] = [
+  { key: 'email', label: 'Account' },
+  { key: 'name', label: 'Last name' },
+  { key: 'games', label: 'Games' },
+  { key: 'wins', label: 'Wins' },
+  { key: 'winRate', label: 'Win rate' },
+  { key: 'points', label: 'Points' },
+  { key: 'perGame', label: 'Points / game' },
+  { key: 'guesses', label: 'Guessed' },
+  { key: 'drawings', label: 'Drew' },
+  { key: 'first_played', label: 'First played' },
+  { key: 'last_played', label: 'Last played' },
+];
+const totals = computed(() => ({
+  accounts: accounts.value.length,
+  active: accounts.value.filter((a) => a.last_played && a.last_played > Date.now() - days.value * 86_400_000).length,
+  games: accounts.value.reduce((sum, a) => sum + a.games, 0),
+}));
+
 const match = (...values: (string | null)[]) => !filter.value || values.some((v) => v?.toLowerCase().includes(filter.value.toLowerCase()));
 const banLink = (kind: string, value: string, label: string) => `/admin/bans?${new URLSearchParams({ kind, value, label })}`;
 </script>
@@ -61,35 +99,39 @@ const banLink = (kind: string, value: string, label: string) => `/admin/bans?${n
     </div>
 
     <section class="flex flex-col gap-2">
-      <h2 class="font-display text-xl text-highlighted">Atlesque accounts</h2>
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="font-display text-xl text-highlighted">Atlesque accounts</h2>
+        <p class="text-xs text-muted">{{ totals.accounts }} accounts have played, {{ totals.active }} in the period shown · {{ totals.games }} games between them</p>
+      </div>
       <div class="overflow-x-auto rounded-lg border border-default bg-default">
         <table class="w-full text-sm">
           <thead class="border-b border-default text-left text-xs text-muted">
             <tr>
-              <th class="px-3 py-2 font-medium">Account</th>
-              <th class="px-3 py-2 font-medium">Last name</th>
-              <th class="px-3 py-2 font-medium">Games</th>
-              <th class="px-3 py-2 font-medium">Wins</th>
-              <th class="px-3 py-2 font-medium">Points</th>
-              <th class="px-3 py-2 font-medium">Guessed</th>
-              <th class="px-3 py-2 font-medium">Drew</th>
-              <th class="px-3 py-2 font-medium">Last played</th>
+              <th v-for="c in columns" :key="c.key" class="px-3 py-2 font-medium" :aria-sort="sort.key === c.key ? (sort.desc ? 'descending' : 'ascending') : undefined">
+                <button type="button" class="inline-flex items-center gap-1 whitespace-nowrap hover:text-highlighted" @click="sortBy(c.key)">
+                  {{ c.label }}
+                  <UIcon v-if="sort.key === c.key" :name="sort.desc ? 'i-lucide-arrow-down' : 'i-lucide-arrow-up'" class="size-3" />
+                </button>
+              </th>
               <th class="px-3 py-2 font-medium" />
             </tr>
           </thead>
           <tbody>
-            <tr v-for="a in accounts.filter((a) => match(a.email, a.name))" :key="a.account_id" class="border-b border-default last:border-0">
+            <tr v-for="a in sortedAccounts" :key="a.account_id" class="border-b border-default last:border-0">
               <td class="px-3 py-2"><NuxtLink :to="`/admin/audit?account=${a.email}`" class="text-primary hover:underline">{{ a.email }}</NuxtLink></td>
               <td class="px-3 py-2">{{ a.name }}</td>
               <td class="px-3 py-2 tabular-nums">{{ a.games }}</td>
               <td class="px-3 py-2 tabular-nums">{{ a.wins }}</td>
+              <td class="px-3 py-2 tabular-nums">{{ a.games ? `${Math.round(rate(a) * 100)}%` : '—' }}</td>
               <td class="px-3 py-2 tabular-nums">{{ a.points }}</td>
+              <td class="px-3 py-2 tabular-nums">{{ a.games ? Math.round(perGame(a)) : '—' }}</td>
               <td class="px-3 py-2 tabular-nums">{{ a.guesses }}</td>
               <td class="px-3 py-2 tabular-nums">{{ a.drawings }}</td>
-              <td class="px-3 py-2 text-muted">{{ ago(a.last_played) }}</td>
+              <td class="px-3 py-2 whitespace-nowrap text-muted">{{ fmtTime(a.first_played) }}</td>
+              <td class="px-3 py-2 whitespace-nowrap text-muted" :title="fmtTime(a.last_played)">{{ ago(a.last_played) }}</td>
               <td class="px-3 py-2"><UButton :to="banLink('account', a.account_id, a.email)" label="Ban" icon="i-lucide-ban" size="xs" color="error" variant="ghost" /></td>
             </tr>
-            <tr v-if="!accounts.length"><td colspan="9" class="px-3 py-6 text-center text-muted">Nobody has played signed in yet.</td></tr>
+            <tr v-if="!accounts.length"><td colspan="12" class="px-3 py-6 text-center text-muted">Nobody has played signed in yet.</td></tr>
           </tbody>
         </table>
       </div>

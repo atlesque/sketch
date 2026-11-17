@@ -67,7 +67,7 @@ function closeAutoFocus(event: Event) {
           <UButton label="Standaard" color="neutral" variant="ghost" size="xs" @click="reset" />
         </div>
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <UFormField v-for="a in ACTIONS" :key="a.action" :label="a.label">
+          <UFormField v-for="a in ACTIONS" :key="a.action" :label="a.label" class="flex flex-col justify-end">
             <UInput :model-value="keys[a.action].toUpperCase()" readonly class="w-full" :ui="{ base: 'text-center font-mono cursor-pointer caret-transparent' }" :aria-label="`Toets voor ${a.label.toLowerCase()}`" @keydown="(event: KeyboardEvent) => capture(a.action, event)" />
           </UFormField>
         </div>
